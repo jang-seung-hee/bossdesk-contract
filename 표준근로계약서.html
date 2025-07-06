@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>표준 근로계약서</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for better readability */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Styling for the main content area */
+        .contract-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2.5rem;
+            background: linear-gradient(135deg, #ffffff, #f8fafc); /* Subtle gradient background */
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+        /* Section title styling */
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b; /* Darker text for titles */
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #cbd5e1; /* Light gray border */
+        }
+        /* Icon styling (using simple shapes/emojis as placeholders for clip art) */
+        .icon {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+        /* Table styling */
+        .contract-table th, .contract-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+        }
+        .contract-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+        .contract-table tr:last-child td {
+            border-bottom: none;
+        }
+        /* Highlighted text for important notes */
+        .note {
+            background-color: #e0f2fe; /* Light blue background */
+            border-left: 5px solid #38b2ac; /* Teal border */
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            color: #0c4a6e;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="contract-container">
+        <!-- Header Section -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-blue-800 mb-4 tracking-tight">
+                <span class="inline-block transform -rotate-3 text-yellow-500">✨</span> 표준 근로계약서 <span class="inline-block transform rotate-3 text-green-500">🤝</span>
+            </h1>
+            <p class="text-lg text-gray-600">
+                근로기준법을 준수하며, 상호 신뢰와 존중을 바탕으로 합니다.
+            </p>
+            <div class="mt-6 flex justify-center space-x-4">
+                <span class="inline-block p-3 bg-blue-100 rounded-full shadow-md">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </span>
+                <span class="inline-block p-3 bg-green-100 rounded-full shadow-md">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.592 1L21 12m-2.592 3A2 2 0 0112 16c-1.11 0-2.08-.402-2.592-1M5 12h.01M12 12h.01M19 12h.01M6 12a3 3 0 11-6 0 3 3 0 016 0zm0 0v1h.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a2 2 0 001.414-.586L19 12V6a2 2 0 00-2-2h-3.172a2 2 0 00-1.414.586L11 7.414a2 2 0 01-.586.707H6z"></path></svg>
+                </span>
+            </div>
+        </header>
+
+        <!-- General Information Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">📄</span> 제1조 (계약의 목적)
+            </h2>
+            <p class="text-gray-700 leading-relaxed">
+                본 계약은 [회사명] (이하 "갑"이라 한다)과 [근로자명] (이하 "을"이라 한다) 간에 근로기준법 및 기타 관련 법규에 의거하여 근로 조건을 명확히 하고, 상호 간의 권리와 의무를 성실히 이행함을 목적으로 한다.
+            </p>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 계약의 기본 원칙</p>
+                <p>근로계약은 근로기준법 제2조에 따라 근로자와 사용자 간에 근로조건을 정하는 계약입니다. 본 계약은 법이 정한 최저 기준을 준수하며, 근로기준법에 미달하는 근로조건은 무효가 되고 그 부분은 근로기준법에 따릅니다 (근로기준법 제6조).</p>
+            </div>
+        </section>
+
+        <!-- Parties Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">👥</span> 제2조 (당사자)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>갑 (사용자)</strong></td>
+                            <td>
+                                <p><strong>회사명:</strong> [회사명]</p>
+                                <p><strong>대표자:</strong> [대표자명]</p>
+                                <p><strong>주소:</strong> [회사 주소]</p>
+                                <p><strong>연락처:</strong> [회사 연락처]</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>을 (근로자)</strong></td>
+                            <td>
+                                <p><strong>성명:</strong> [근로자명]</p>
+                                <p><strong>생년월일:</strong> [YYYY년 MM월 DD일]</p>
+                                <p><strong>주소:</strong> [근로자 주소]</p>
+                                <p><strong>연락처:</strong> [근로자 연락처]</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 당사자 정보의 중요성</p>
+                <p>사용자와 근로자의 정확한 정보는 계약의 유효성을 확인하고, 향후 발생할 수 있는 법적 분쟁 시 당사자를 명확히 하는 데 필수적입니다. 특히 근로자의 개인정보는 「개인정보 보호법」에 따라 안전하게 관리되어야 합니다.</p>
+            </div>
+        </section>
+
+        <!-- Employment Period Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">📅</span> 제3조 (근로계약 기간)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>계약 시작일</strong></td>
+                            <td>[YYYY년 MM월 DD일]</td>
+                        </tr>
+                        <tr>
+                            <td><strong>계약 종료일</strong></td>
+                            <td>[YYYY년 MM월 DD일] 또는 "기간의 정함이 없음"</td>
+                        </tr>
+                        <tr>
+                            <td><strong>수습 기간</strong></td>
+                            <td>[없음] 또는 [3개월] (수습 기간 중 급여는 [급여의 90%] 지급 가능)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 근로계약 기간 및 수습</p>
+                <p>근로계약은 기간을 정할 수도 있고(기간제 근로), 기간을 정하지 않을 수도 있습니다(정규직). 기간제 근로계약은 원칙적으로 2년을 초과할 수 없으며, 2년을 초과하여 사용하는 경우 기간의 정함이 없는 근로자로 간주됩니다 (기간제법 제4조).</p>
+                <p>수습 기간은 근로자의 업무 적응 및 능력 평가를 위한 기간으로, 근로기준법 제35조 및 동법 시행령 제3조에 따라 3개월 이내의 수습 근로자에 대해서는 해고예고 규정이 적용되지 않을 수 있으며, 최저임금의 90% 이상을 지급할 수 있습니다.</p>
+            </div>
+        </section>
+
+        <!-- Work Location & Job Description Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">📍</span> 제4조 (근무 장소 및 업무 내용)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>근무 장소</strong></td>
+                            <td>[회사 주소] 또는 [별도 지정 장소]</td>
+                        </tr>
+                        <tr>
+                            <td><strong>업무 내용</strong></td>
+                            <td>[담당 업무 상세 기재 (예: 웹 개발, 영업, 사무 지원 등)]</td>
+                        </tr>
+                        <tr>
+                            <td><strong>직위/직책</strong></td>
+                            <td>[직위/직책]</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 근무 장소 및 업무의 명확화</p>
+                <p>근무 장소와 업무 내용은 근로계약의 중요한 요소입니다. 이는 근로자의 권리 보호뿐만 아니라, 사용자의 인사권 행사 범위에도 영향을 미칩니다. 업무 내용이 포괄적일 경우 향후 업무 지시 범위에 대한 분쟁이 발생할 수 있으므로 최대한 구체적으로 명시하는 것이 좋습니다.</p>
+            </div>
+        </section>
+
+        <!-- Working Hours & Rest Hours Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">⏰</span> 제5조 (근로시간 및 휴게시간)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>소정 근로시간</strong></td>
+                            <td>1일 [8]시간, 1주 [40]시간 (월~금, [09:00] ~ [18:00])</td>
+                        </tr>
+                        <tr>
+                            <td><strong>휴게 시간</strong></td>
+                            <td>1일 [1]시간 (근로시간 중 [12:00] ~ [13:00])</td>
+                        </tr>
+                        <tr>
+                            <td><strong>연장/야간/휴일 근로</strong></td>
+                            <td>갑의 지시 또는 을의 동의 하에 가능하며, 근로기준법에 따라 가산수당 지급</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 근로시간 및 가산수당</p>
+                <p>근로기준법 제50조에 따라 1주간의 근로시간은 40시간을, 1일의 근로시간은 8시간을 초과할 수 없습니다. 휴게시간은 근로시간 4시간에 30분 이상, 8시간에 1시간 이상을 부여해야 하며 (근로기준법 제54조), 자유롭게 이용할 수 있어야 합니다.</p>
+                <p>연장근로(1주 12시간 한도), 야간근로(오후 10시부터 오전 6시까지), 휴일근로에 대해서는 통상임금의 50% 이상을 가산하여 지급해야 합니다 (근로기준법 제56조). 주 52시간 근무제는 연장근로를 포함한 총 근로시간을 의미합니다.</p>
+            </div>
+        </section>
+
+        <!-- Holidays & Leaves Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">🏖️</span> 제6조 (휴일 및 휴가)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>주휴일</strong></td>
+                            <td>매주 [토요일] 또는 [일요일] (주 1회 유급 휴일)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>법정 공휴일</strong></td>
+                            <td>「관공서의 공휴일에 관한 규정」에 따른 유급 휴일</td>
+                        </tr>
+                        <tr>
+                            <td><strong>연차 유급 휴가</strong></td>
+                            <td>근로기준법에 따라 부여 (입사 1년 미만 시 1개월 개근 시 1일, 1년 이상 시 15일 등)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>기타 휴가</strong></td>
+                            <td>경조사 휴가 등 회사의 취업규칙에 따름</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 휴일 및 연차 유급 휴가</p>
+                <p>주휴일은 1주간 소정근로일을 개근한 근로자에게 주어지는 유급 휴일입니다 (근로기준법 제55조). 법정 공휴일은 2022년부터 모든 사업장에 유급 휴일로 적용됩니다.</p>
+                <p>연차 유급 휴가는 근로기준법 제60조에 따라 1년간 80% 이상 출근한 근로자에게 15일이 부여되며, 3년 이상 계속 근로 시 2년마다 1일씩 가산됩니다. 1년 미만 근로자 또는 1년간 80% 미만 출근한 근로자에게는 1개월 개근 시 1일의 유급휴가가 부여됩니다. 사용자는 근로자의 연차 사용을 촉진할 의무가 있습니다.</p>
+            </div>
+        </section>
+
+        <!-- Wages Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">💰</span> 제7조 (임금)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>월 기본급</strong></td>
+                            <td>[0,000,000]원</td>
+                        </tr>
+                        <tr>
+                            <td><strong>제수당</strong></td>
+                            <td>[식대, 교통비, 직책수당 등 (상세 내역 기재)]</td>
+                        </tr>
+                        <tr>
+                            <td><strong>총 월 임금</strong></td>
+                            <td>[0,000,000]원 (세전)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>임금 지급일</strong></td>
+                            <td>매월 [25]일</td>
+                        </tr>
+                        <tr>
+                            <td><strong>지급 방법</strong></td>
+                            <td>을의 지정 계좌로 입금</td>
+                        </tr>
+                        <tr>
+                            <td><strong>임금 계산 기간</strong></td>
+                            <td>매월 1일부터 말일까지</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 임금 지급의 원칙</p>
+                <p>임금은 근로기준법 제43조에 따라 매월 1회 이상 일정한 날짜에 통화로 직접 근로자에게 그 전액을 지급해야 합니다. 임금은 최저임금법에 따른 최저임금 이상이어야 하며, 사용자는 임금명세서를 근로자에게 교부해야 할 의무가 있습니다 (근로기준법 제48조).</p>
+                <p>법정 수당(연장, 야간, 휴일근로수당, 주휴수당 등)은 기본급과 별도로 가산하여 지급됩니다.</p>
+            </div>
+        </section>
+
+        <!-- Social Insurance Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">🏥</span> 제8조 (사회보험)
+            </h2>
+            <p class="text-gray-700 leading-relaxed">
+                갑과 을은 근로기준법 및 관련 법령에 따라 4대 사회보험 (국민연금, 건강보험, 고용보험, 산재보험)에 가입하며, 보험료는 관계 법령에 따라 갑과 을이 각각 부담한다.
+            </p>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 4대 사회보험</p>
+                <p>4대 사회보험은 근로자의 생활 안정과 복지 증진을 위한 필수적인 제도입니다. 국민연금, 건강보험, 고용보험은 근로자와 사용자가 보험료를 분담하며, 산재보험은 전액 사용자가 부담합니다. 각 보험의 가입 및 보험료 납부는 법적 의무 사항입니다.</p>
+            </div>
+        </section>
+
+        <!-- Termination of Employment Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">👋</span> 제9조 (계약 해지)
+            </h2>
+            <p class="text-gray-700 leading-relaxed">
+                본 계약은 다음 각 호의 사유 발생 시 해지될 수 있다.
+            </p>
+            <ul class="list-disc list-inside ml-4 text-gray-700">
+                <li>근로계약 기간이 만료된 경우 (기간의 정함이 있는 경우)</li>
+                <li>갑 또는 을이 본 계약 내용을 위반한 경우</li>
+                <li>근로기준법 및 기타 관련 법령에 의거한 해고 또는 사직 사유가 발생한 경우</li>
+                <li>기타 상호 합의에 의한 경우</li>
+            </ul>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">⚠️ 유의사항: 계약 해지 및 해고</p>
+                <p>사용자는 근로자를 정당한 이유 없이 해고할 수 없습니다 (근로기준법 제23조). 해고 시에는 적어도 30일 전에 예고해야 하며, 30일 전에 예고하지 아니하였을 때에는 30일분 이상의 통상임금을 지급해야 합니다 (해고예고수당, 근로기준법 제26조).</p>
+                <p>근로자가 퇴직할 경우에도 회사에 충분한 인수인계 기간을 제공하기 위해 사직 의사를 미리 통보하는 것이 바람직합니다. 퇴직금은 1년 이상 계속 근로한 근로자에게 지급됩니다 (근로자퇴직급여 보장법 제8조).</p>
+            </div>
+        </section>
+
+        <!-- Other Conditions Section -->
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">📝</span> 제10조 (기타 사항)
+            </h2>
+            <ul class="list-disc list-inside ml-4 text-gray-700">
+                <li>본 계약서에 명시되지 않은 사항은 근로기준법 및 회사의 취업규칙에 따른다.</li>
+                <li>을은 회사의 영업 비밀 및 기밀 사항을 외부에 누설하지 아니하며, 퇴직 후에도 이를 준수한다.</li>
+                <li>본 계약은 2부를 작성하여 갑과 을이 각각 1부씩 보관한다.</li>
+            </ul>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">💡 중요 안내: 취업규칙 및 비밀유지 의무</p>
+                <p>취업규칙은 근로기준법 제93조에 따라 상시 10명 이상의 근로자를 사용하는 사용자가 작성하여 고용노동부장관에게 신고해야 하는 규칙으로, 근로조건에 대한 세부적인 사항을 정합니다. 근로계약서에 명시되지 않은 사항은 취업규칙을 따릅니다.</p>
+                <p>영업 비밀 및 기밀 유지 의무는 근로자의 중요한 의무 중 하나입니다. 이는 「부정경쟁방지 및 영업비밀보호에 관한 법률」에 의해 보호되며, 위반 시 법적 책임을 질 수 있습니다.</p>
+            </div>
+        </section>
+
+        <!-- Signature Section -->
+        <section class="mt-12 text-center">
+            <h2 class="section-title justify-center">
+                <span class="icon">✍️</span> 계약 당사자 서명
+            </h2>
+            <p class="text-gray-600 mb-8">
+                본 계약의 내용을 충분히 이해하고 동의하며, 상호 성실히 이행할 것을 약속합니다.
+            </p>
+
+            <div class="flex flex-col md:flex-row justify-around items-center space-y-8 md:space-y-0 md:space-x-12">
+                <div class="w-full md:w-1/2 p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+                    <p class="text-xl font-bold text-blue-700 mb-4">갑 (사용자)</p>
+                    <p class="text-lg text-gray-800"><strong>회사명:</strong> [회사명]</p>
+                    <p class="text-lg text-gray-800 mb-6"><strong>대표자:</strong> [대표자명] (인)</p>
+                    <div class="border-t-2 border-dashed border-gray-300 pt-4 text-gray-500 text-sm">
+                        서명 또는 날인
+                    </div>
+                </div>
+
+                <div class="w-full md:w-1/2 p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+                    <p class="text-xl font-bold text-green-700 mb-4">을 (근로자)</p>
+                    <p class="text-lg text-gray-800"><strong>성명:</strong> [근로자명]</p>
+                    <p class="text-lg text-gray-800 mb-6"><strong>주민등록번호:</strong> [앞 6자리 - 뒤 7자리]</p>
+                    <div class="border-t-2 border-dashed border-gray-300 pt-4 text-gray-500 text-sm">
+                        서명 또는 날인
+                    </div>
+                </div>
+            </div>
+
+            <p class="mt-12 text-gray-500 text-sm">
+                계약 체결일: [YYYY년 MM월 DD일]
+            </p>
+        </section>
+
+        <!-- Footer / Legal Disclaimer -->
+        <footer class="mt-16 text-center text-gray-500 text-xs">
+            <p>본 계약서는 근로기준법을 바탕으로 작성된 표준 양식이며, 개별 상황에 따라 추가 또는 수정이 필요할 수 있습니다.</p>
+            <p>법률 전문가와 상담하여 최종 내용을 확정하시길 권장합니다.</p>
+        </footer>
+    </div>
+</body>
+</html>
