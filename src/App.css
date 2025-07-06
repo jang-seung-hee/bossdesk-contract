@@ -1,4 +1,19 @@
 /* Reset and Base Styles */
+:root {
+  /* 안드로이드 색상 개선을 위한 CSS 변수 */
+  --primary-gradient-start: #667eea;
+  --primary-gradient-end: #764ba2;
+  --primary-gradient-hover-start: #5a6fd8;
+  --primary-gradient-hover-end: #6a4190;
+  --secondary-gradient-start: #f5f7fa;
+  --secondary-gradient-end: #c3cfe2;
+  --text-white: #ffffff;
+  --text-white-90: rgba(255, 255, 255, 0.9);
+  --text-white-70: rgba(255, 255, 255, 0.7);
+  --shadow-light: rgba(0, 0, 0, 0.1);
+  --shadow-medium: rgba(0, 0, 0, 0.15);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -9,8 +24,18 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* 안드로이드 호환성을 위한 그라데이션 개선 */
+  background: var(--primary-gradient-start);
+  background: -webkit-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -moz-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -o-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
   min-height: 100vh;
+  /* 하드웨어 가속 활성화 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  /* 색상 프로파일 개선 */
+  color-scheme: light;
 }
 
 /* Home Container */
@@ -20,18 +45,30 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* 안드로이드 호환성을 위한 그라데이션 개선 */
+  background: var(--primary-gradient-start);
+  background: -webkit-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -moz-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -o-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  /* 하드웨어 가속 활성화 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .home-content {
   max-width: 480px;
   width: 100%;
   text-align: center;
+  margin: 0 auto;
 }
 
 /* Hero Section */
 .hero-section {
   margin-bottom: 60px;
+  /* 안드로이드 하드웨어 가속 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .logo-container {
@@ -49,6 +86,9 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  /* 안드로이드 하드웨어 가속 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .logo-svg {
@@ -60,17 +100,25 @@ body {
 .hero-title {
   font-size: 48px;
   font-weight: 700;
-  color: white;
+  color: var(--text-white);
   margin-bottom: 12px;
   letter-spacing: -0.5px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 2px 4px var(--shadow-light);
+  /* 안드로이드 텍스트 렌더링 개선 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .hero-subtitle {
   font-size: 18px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-white-90);
   font-weight: 400;
   letter-spacing: 0.2px;
+  /* 안드로이드 텍스트 렌더링 개선 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Action Buttons */
@@ -90,16 +138,19 @@ body {
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px var(--shadow-light);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   text-align: left;
   width: 100%;
+  /* 안드로이드 하드웨어 가속 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .action-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px var(--shadow-medium);
   background: rgba(255, 255, 255, 1);
 }
 
@@ -108,12 +159,25 @@ body {
 }
 
 .action-button.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  /* 안드로이드 호환성을 위한 그라데이션 개선 */
+  background: var(--primary-gradient-start);
+  background: -webkit-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -moz-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -o-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  color: var(--text-white);
+  /* 하드웨어 가속 활성화 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .action-button.primary:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  /* 안드로이드 호환성을 위한 그라데이션 개선 */
+  background: var(--primary-gradient-hover-start);
+  background: -webkit-linear-gradient(135deg, var(--primary-gradient-hover-start) 0%, var(--primary-gradient-hover-end) 100%);
+  background: -moz-linear-gradient(135deg, var(--primary-gradient-hover-start) 0%, var(--primary-gradient-hover-end) 100%);
+  background: -o-linear-gradient(135deg, var(--primary-gradient-hover-start) 0%, var(--primary-gradient-hover-end) 100%);
+  background: linear-gradient(135deg, var(--primary-gradient-hover-start) 0%, var(--primary-gradient-hover-end) 100%);
 }
 
 .action-button.secondary {
@@ -161,10 +225,13 @@ body {
 /* Footer */
 .home-footer {
   margin-top: 40px;
+  /* 안드로이드 하드웨어 가속 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .footer-text {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-white-70);
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.2px;
@@ -173,8 +240,16 @@ body {
 /* Contract Form Styles */
 .contract-form-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  /* 안드로이드 호환성을 위한 그라데이션 개선 */
+  background: var(--secondary-gradient-start);
+  background: -webkit-linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+  background: -moz-linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+  background: -o-linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+  background: linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
   padding: 20px;
+  /* 하드웨어 가속 활성화 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .contract-form-container {
@@ -184,6 +259,9 @@ body {
   border-radius: 24px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  /* 중앙 정렬 보장 */
+  display: block;
+  position: relative;
 }
 
 /* Form Header */
@@ -192,8 +270,16 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 24px 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  /* 안드로이드 호환성을 위한 그라데이션 개선 */
+  background: var(--primary-gradient-start);
+  background: -webkit-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -moz-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: -o-linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+  color: var(--text-white);
+  /* 하드웨어 가속 활성화 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .back-btn {
@@ -636,7 +722,278 @@ body {
   border: 1px solid #bae6fd;
 }
 
-/* Work Time Summary */
+/* Work Time Summary - Compact Design */
+.work-time-summary-compact {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.summary-header {
+  margin-bottom: 16px;
+}
+
+.summary-title-compact {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.summary-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 18px;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.legal-status-compact {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.legal-status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.legal-icon {
+  font-size: 16px;
+}
+
+.legal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.legal-status-grid {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.legal-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.legal-badge.eligible {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-color: #86efac;
+  color: #166534;
+}
+
+.legal-badge.not-eligible {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.badge-icon {
+  font-size: 14px;
+}
+
+.badge-text {
+  font-weight: 600;
+}
+
+.legal-note {
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+.legal-explanations {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.legal-explanation-item {
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 16px;
+  border-left: 3px solid #e2e8f0;
+}
+
+.explanation-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.explanation-icon {
+  font-size: 18px;
+}
+
+.explanation-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.explanation-text {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.explanation-criteria {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 4px 10px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.legal-badge {
+  font-size: 15px;
+  padding: 8px 16px;
+}
+
+.badge-icon {
+  font-size: 18px;
+}
+
+.badge-text {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.legal-note {
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .work-time-summary-compact {
+    padding: 16px;
+    margin-top: 16px;
+  }
+  
+  .summary-stats-grid {
+    gap: 8px;
+  }
+  
+  .stat-card {
+    padding: 10px;
+  }
+  
+  .stat-label {
+    font-size: 11px;
+  }
+  
+  .stat-value {
+    font-size: 16px;
+  }
+  
+  .legal-status-grid {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .legal-badge {
+    justify-content: center;
+  }
+  
+  .legal-explanations {
+    margin-top: 10px;
+    gap: 8px;
+    font-size: 14px;
+  }
+  
+  .legal-explanation-item {
+    padding: 10px;
+  }
+  
+  .explanation-title {
+    font-size: 14px;
+  }
+  
+  .explanation-text {
+    font-size: 13px;
+  }
+  
+  .explanation-criteria {
+    font-size: 12px;
+  }
+  
+  .legal-badge {
+    font-size: 14px;
+    padding: 7px 12px;
+  }
+  
+  .badge-icon {
+    font-size: 16px;
+  }
+  
+  .badge-text {
+    font-size: 14px;
+  }
+  
+  .legal-note {
+    font-size: 12px;
+  }
+}
+
+/* Work Time Summary - Legacy (deprecated) */
 .work-time-summary {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   border-radius: 16px;
@@ -930,6 +1287,21 @@ body {
   color: white;
 }
 
+.nav-btn.next-btn.disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.nav-btn.next-btn.disabled:hover {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  color: #6b7280;
+  transform: none;
+}
+
 .nav-btn.hidden {
   visibility: hidden;
 }
@@ -937,9 +1309,10 @@ body {
 /* Responsive Design */
 @media (max-width: 768px) {
   .contract-form-container {
-    margin: 0;
+    margin: 0 auto;
     border-radius: 0;
     min-height: 100vh;
+    max-width: 100%;
   }
   
   .form-header {
@@ -997,18 +1370,103 @@ body {
 @media (max-width: 480px) {
   .home-container {
     padding: 16px;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .home-content {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .hero-title {
+    font-size: 36px;
+  }
+
+  .hero-subtitle {
+    font-size: 16px;
+  }
+
+  .action-button {
+    padding: 16px 20px;
+  }
+
+  .button-title {
+    font-size: 16px;
+  }
+
+  .button-description {
+    font-size: 13px;
+  }
+}
+
+/* 안드로이드 기기 특별 처리 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  /* 안드로이드 WebView 최적화 */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* 그라데이션 렌더링 개선 */
+  .home-container,
+  .contract-form-page,
+  .form-header,
+  .action-button.primary {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+  }
+}
+
+/* 삼성 갤럭시 특별 처리 */
+@media screen and (max-width: 480px) and (-webkit-min-device-pixel-ratio: 2) {
+  /* 고해상도 디스플레이에서 색상 개선 */
+  :root {
+    --primary-gradient-start: #5a6fd8;
+    --primary-gradient-end: #6a4190;
+    --primary-gradient-hover-start: #4f62c4;
+    --primary-gradient-hover-end: #5f3780;
+  }
+}
+
+/* 가로 모드 (Landscape) 특별 처리 */
+@media screen and (max-height: 480px) and (orientation: landscape) {
+  /* 가로 모드에서 중앙 정렬 개선 */
+  .home-container {
+    padding: 10px 20px;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .home-content {
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  
+  .hero-section {
+    margin-bottom: 30px;
   }
   
   .hero-title {
-    font-size: 36px;
+    font-size: 32px;
+    margin-bottom: 8px;
   }
   
   .hero-subtitle {
     font-size: 16px;
   }
   
+  .action-buttons {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  
   .action-button {
-    padding: 16px 20px;
+    padding: 14px 20px;
   }
   
   .button-title {
@@ -1017,6 +1475,87 @@ body {
   
   .button-description {
     font-size: 13px;
+  }
+  
+  .home-footer {
+    margin-top: 20px;
+  }
+}
+
+/* 태블릿 가로 모드 */
+@media screen and (min-width: 768px) and (max-height: 600px) and (orientation: landscape) {
+  .home-container {
+    padding: 20px 40px;
+  }
+  
+  .home-content {
+    max-width: 800px;
+  }
+  
+  .hero-title {
+    font-size: 40px;
+  }
+  
+  .action-buttons {
+    flex-direction: row;
+    gap: 20px;
+  }
+  
+  .action-button {
+    flex: 1;
+    max-width: 300px;
+  }
+}
+
+/* 모바일 가로 모드에서 폼 페이지 개선 */
+@media screen and (max-height: 480px) and (orientation: landscape) {
+  .contract-form-page {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .contract-form-container {
+    max-width: 90%;
+    margin: 0 auto;
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+  
+  .form-header {
+    padding: 16px 24px;
+  }
+  
+  .step-content {
+    padding: 16px 24px;
+  }
+  
+  .navigation-buttons {
+    padding: 16px 24px;
+  }
+}
+
+/* 모든 화면 크기에서 중앙 정렬 보장 */
+@media screen and (min-width: 481px) {
+  .home-container {
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .home-content {
+    margin: 0 auto;
+  }
+  
+  .contract-form-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  
+  .contract-form-container {
+    margin: 0 auto;
   }
 }
 
@@ -1349,6 +1888,7 @@ body {
 }
 
 /* 법적 기준 안내 섹션 스타일 */
+/* Legal Status Section - Legacy (deprecated) */
 .legal-status-section {
   margin-top: 1.5rem;
   padding: 1.2rem;
@@ -1951,4 +2491,38 @@ optgroup option {
   background-repeat: no-repeat;
   background-size: 1.5em 1.5em;
   padding-right: 2.5rem;
+}
+
+/* 플로팅 액션 버튼 바 */
+.floating-action-buttons {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  background: #fff;
+  border-radius: 2rem;
+  padding: 0.75rem 2.5rem;
+  align-items: center;
+}
+
+.fab-btn {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 1.5rem;
+  padding: 0.7rem 1.7rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  margin: 0 0.2rem;
+}
+.fab-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 16px rgba(59,130,246,0.15);
+}
+
+/* 인쇄 시 플로팅 버튼 숨김 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }

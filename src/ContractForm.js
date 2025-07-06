@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // 스텝 진행상황 관련 변수들
@@ -39,6 +39,20 @@ function getHourStr(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h}시간${m ? ' ' + m + '분' : ''}`;
+}
+
+// 천단위 콤마 처리 유틸리티 함수들
+function formatNumberWithCommas(value) {
+  if (!value) return '';
+  // 숫자가 아닌 문자 제거 후 천단위 콤마 추가
+  const numericValue = value.toString().replace(/[^\d]/g, '');
+  return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function parseNumberFromCommas(value) {
+  if (!value) return '';
+  // 콤마 제거 후 숫자만 반환
+  return value.toString().replace(/[^\d]/g, '');
 }
 
 function calcWorkStats(form) {
@@ -100,6 +114,7 @@ function calculateInsurance(baseSalary) {
 }
 
 function ContractForm() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     // 사업장 정보
     storeName: '스타벅스 강남점', // 테스트용 임시데이터 - 테스트 완료 후 ''로 변경
@@ -118,8 +133,11 @@ function ContractForm() {
     workerAddress: '서울특별시 서초구 서초대로 456', // 테스트용 임시데이터 - 테스트 완료 후 ''로 변경
     workerAddressDetail: '101동 202호', // 테스트용 임시데이터 - 테스트 완료 후 ''로 변경
     // 계약 기간
-    periodStart: '2025-01-01', // 테스트용 임시데이터 - 테스트 완료 후 ''로 변경
-    periodEnd: '2025-12-31', // 테스트용 임시데이터 - 테스트 완료 후 ''로 변경
+    periodStart: (() => {
+      const today = new Date();
+      return today.toISOString().split('T')[0]; // 오늘 날짜를 YYYY-MM-DD 형식으로
+    })(),
+    periodEnd: '', // 무기한 계약을 기본값으로 설정
     probationPeriod: '3개월', // 테스트용 임시데이터 - 테스트 완료 후 ''로 변경
     probationDiscount: '10', // 수습기간 감액률 (%)
     // 근무 조건
@@ -150,6 +168,32 @@ function ContractForm() {
   });
   const [step, setStep] = useState(0);
   const daysOfWeek = ['월', '화', '수', '목', '금', '토', '일'];
+
+  // URL 파라미터에서 step 값을 읽어서 해당 단계로 이동
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const stepParam = urlParams.get('step');
+    
+    // sessionStorage에서 form 데이터 복원
+    const savedFormData = sessionStorage.getItem('contractFormData');
+    if (savedFormData) {
+      try {
+        const parsedFormData = JSON.parse(savedFormData);
+        setForm(parsedFormData);
+        // 데이터 복원 후 sessionStorage에서 삭제
+        sessionStorage.removeItem('contractFormData');
+      } catch (error) {
+        console.error('Form data 복원 중 오류:', error);
+      }
+    }
+    
+    if (stepParam !== null) {
+      const stepNumber = parseInt(stepParam);
+      if (stepNumber >= 0 && stepNumber <= 8) {
+        setStep(stepNumber);
+      }
+    }
+  }, []);
 
 // 계약 해지 조건 옵션 (MECE 분류)
 const terminationOptions = [
@@ -264,8 +308,6 @@ function getTerminationText(form) {
   return selectedOptions.length > 0 ? selectedOptions.join(', ') : '계약 해지 조건이 설정되지 않았습니다.';
 }
 
-const navigate = useNavigate();
-
   // 카카오 주소 API 스크립트 동적 로드
   React.useEffect(() => {
     if (!window.daum) {
@@ -353,6 +395,26 @@ const navigate = useNavigate();
         ...prev,
         [name]: value,
       }));
+    } else if (name === 'commonStart' || name === 'commonEnd') {
+      // 매일 같은 시간 설정에서 출근/퇴근 시간이 모두 입력되면 휴게시간 자동 계산
+      setForm((prev) => {
+        const newForm = { ...prev, [name]: value };
+        
+        // 출근/퇴근 시간이 모두 입력되면 휴게시간 자동 계산
+        if (newForm.commonStart && newForm.commonEnd) {
+          const breakTime = calculateBreakTime(newForm.commonStart, newForm.commonEnd);
+          newForm.commonBreak = breakTime.toString();
+        }
+        
+        return newForm;
+      });
+    } else if (name === 'monthlySalary' || name === 'hourlyWage' || name === 'allowances') {
+      // 숫자 입력 필드에 대한 천단위 콤마 처리
+      const numericValue = parseNumberFromCommas(value);
+      setForm((prev) => ({
+        ...prev,
+        [name]: numericValue,
+      }));
     } else {
       setForm((prev) => ({
         ...prev,
@@ -423,19 +485,21 @@ const navigate = useNavigate();
     const insurance = calculateInsurance(baseSalaryForInsurance);
     
     // 수습기간 임금 계산
-    const totalSalaryForProbation = form.salaryType === 'monthly' ? (basePay + allowances) : totalCalculatedSalary;
-    const probationSalary = form.probationPeriod ? calculateProbationSalary(totalSalaryForProbation, form.probationDiscount) : 0;
+    // 기본급만 감액 적용, 제수당은 그대로 지급
+    const baseSalaryForProbation = form.salaryType === 'monthly' ? Number(form.monthlySalary) : (totalCalculatedSalary - allowances);
+    const probationBaseSalary = form.probationPeriod ? calculateProbationSalary(baseSalaryForProbation, form.probationDiscount) : baseSalaryForProbation;
+    const probationSalary = probationBaseSalary + allowances; // 제수당 추가
     const probationDiscountRate = Number(form.probationDiscount) / 100;
-    const originalDiscountedSalary = totalSalaryForProbation * (1 - probationDiscountRate);
-    const isMinimumApplied = probationSalary > originalDiscountedSalary;
+    const originalDiscountedSalary = baseSalaryForProbation * (1 - probationDiscountRate) + allowances;
+    const isMinimumApplied = probationBaseSalary > (baseSalaryForProbation * (1 - probationDiscountRate));
     
     const baseSalary = form.salaryType === 'monthly' 
-      ? (form.baseSalary ? Number(form.baseSalary).toLocaleString() : '[0,000,000]')
+      ? (form.monthlySalary ? Number(form.monthlySalary).toLocaleString() : '[0,000,000]')
       : (form.hourlyWage ? `${form.hourlyWage.toLocaleString()}원/시간` : '[0,000]원/시간');
     const allowancesText = form.allowances ? Number(form.allowances).toLocaleString() : '[식대, 교통비, 직책수당 등]';
     const totalSalary = form.salaryType === 'monthly'
-      ? (form.baseSalary && form.allowances 
-          ? (Number(form.baseSalary) + Number(form.allowances)).toLocaleString() 
+      ? (form.monthlySalary && form.allowances 
+          ? (Number(form.monthlySalary) + Number(form.allowances)).toLocaleString() 
           : '[0,000,000]')
       : (form.salaryType === 'hourly' && hourlyWage > 0 
           ? `${Math.round(totalCalculatedSalary).toLocaleString()}원 (시급제 계산)`
@@ -456,13 +520,47 @@ const navigate = useNavigate();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>표준 근로계약서</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom font for better readability */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        @media print {
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .contract-container {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+            .contract-container, .contract-content, header {
+                page-break-before: auto !important;
+                page-break-after: auto !important;
+                break-before: auto !important;
+                break-after: auto !important;
+            }
+            /* 인쇄 시 모든 배경색 제거 */
+            * {
+                background-color: transparent !important;
+                color: black !important;
+                box-shadow: none !important;
+            }
+            /* 테이블 스타일 인쇄용 */
+            .contract-table th {
+                background-color: #f8f9fa !important;
+                border: 1px solid #dee2e6 !important;
+            }
+            .contract-table td {
+                border: 1px solid #dee2e6 !important;
+            }
+            /* 노트 박스 인쇄용 */
+            .note {
+                border: 1px solid #ccc !important;
+                background-color: #f8f9fa !important;
+            }
         }
         /* Custom scrollbar for a cleaner look */
         ::-webkit-scrollbar {
@@ -481,13 +579,48 @@ const navigate = useNavigate();
         }
         /* Styling for the main content area */
         .contract-container {
-            max-width: 900px;
+            max-width: 800px;
             margin: 2rem auto;
             padding: 2.5rem;
-            background: linear-gradient(135deg, #ffffff, #f8fafc); /* Subtle gradient background */
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             border: 1px solid #e2e8f0;
+        }
+        .contract-title-main {
+            font-size: 1.15rem !important;
+            font-weight: 800;
+            color: #2563eb;
+            margin-bottom: 1.5rem;
+        }
+        .signature-boxes {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 2rem;
+            justify-content: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .sig-box {
+            min-width: 210px;
+            max-width: 260px;
+            width: 100%;
+            padding: 1.2rem 1.2rem;
+            font-size: 1.05rem;
+            flex: 1 1 210px;
+        }
+        @media print {
+            .signature-boxes {
+                gap: 1.5rem !important;
+                max-width: 600px !important;
+            }
+            .sig-box {
+                min-width: 200px !important;
+                max-width: 240px !important;
+                padding: 1rem 1rem !important;
+                font-size: 1rem !important;
+                flex: 1 1 200px !important;
+            }
         }
         /* Section title styling */
         .section-title {
@@ -523,28 +656,14 @@ const navigate = useNavigate();
         }
         /* Highlighted text for important notes */
         .note {
-            background-color: #e0f2fe; /* Light blue background */
-            border-left: 5px solid #38b2ac; /* Teal border */
+            background-color: #f8f9fa; /* 연한 회색 배경으로 변경 */
+            border-left: 5px solid #6c757d; /* 회색 테두리로 변경 */
             padding: 1rem;
             border-radius: 8px;
             margin-top: 1.5rem;
-            color: #0c4a6e;
+            color: #495057;
         }
-        @media print {
-            body {
-                background: white;
-            }
-            .contract-container {
-                margin: 0;
-                padding: 1rem;
-                box-shadow: none;
-                border-radius: 0;
-                border: none;
-            }
-            .no-print {
-                display: none;
-            }
-        }
+
         .contract-table th.col-label,
         .contract-table td.col-label {
             width: 200px;
@@ -564,9 +683,8 @@ const navigate = useNavigate();
 </head>
 <body class="p-4 sm:p-6 md:p-8">
     <div class="contract-container">
-        <!-- Header Section -->
         <header class="text-center mb-10">
-            <h1 class="text-4xl font-extrabold text-blue-800 mb-4 tracking-tight">
+            <h1 class="contract-title-main">
                 표준 근로계약서
             </h1>
             <p class="text-lg text-gray-600" style="font-size: 1.35rem; color: #111; font-weight: 500;">
@@ -575,26 +693,24 @@ const navigate = useNavigate();
 
         </header>
 
-        <!-- 2025년 법적 정보 안내 -->
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded">
+        <div class="bg-gray-50 border-l-4 border-gray-400 p-4 mb-6 rounded">
             <div class="flex">
                 <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-yellow-800">■ 2025년 최신 법적 정보</h3>
-                    <div class="mt-2 text-sm text-yellow-700">
+                    <h3 class="text-sm font-medium text-gray-800">■ 2025년 최신 법적 정보</h3>
+                    <div class="mt-2 text-sm text-gray-700">
                         <p>• 최저시급: ${LEGAL_INFO.MIN_WAGE.toLocaleString()}원/시간</p>
                         <p>• 최저월급: ${LEGAL_INFO.MIN_MONTHLY.toLocaleString()}원 (209시간 기준)</p>
-                        <p>• 4대보험료: 국민연금 4.5%, 건강보험 3.545%, 장기요양보험 0.4591%, 고용보험 0.9%, 산재보험 업종별</p>
+                        <p>• 4대보험료: 국민연금 4.5%, 건강보험 3.54%, 장기요양보험 0.46%, 고용보험 0.9%, 산재보험</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- General Information Section -->
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제1조 (계약의 목적)
@@ -608,7 +724,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Parties Section -->
+        {/* Parties Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제2조 (당사자)
@@ -649,7 +765,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Employment Period Section -->
+        {/* Employment Period Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제3조 (근로계약 기간)
@@ -691,7 +807,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Work Location & Job Description Section -->
+        {/* Work Location & Job Description Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제4조 (근무 장소 및 업무 내용)
@@ -726,7 +842,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Working Hours & Rest Hours Section -->
+        {/* Working Hours & Rest Hours Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제5조 (근로시간 및 휴게시간)
@@ -762,7 +878,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Holidays & Leaves Section -->
+        {/* Holidays & Leaves Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제6조 (휴일 및 휴가)
@@ -802,7 +918,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Wages Section -->
+        {/* Wages Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제7조 (임금)
@@ -853,12 +969,12 @@ const navigate = useNavigate();
                             <td>매월 1일부터 말일까지</td>
                         </tr>
                         ${form.probationPeriod ? `
-                        <tr style="background-color: #fef3c7;">
+                        <tr style="background-color: #f8f9fa;">
                             <td><strong>수습기간 임금</strong></td>
                             <td>
-                                <div style="color: #92400e; font-size: 14px;">
+                                <div style="color: #495057; font-size: 14px;">
                                     <p><strong>수습기간:</strong> ${form.probationPeriod}</p>
-                                    <p><strong>정상 임금:</strong> ${totalSalaryForProbation.toLocaleString()}원</p>
+                                    <p><strong>정상 임금:</strong> ${(baseSalaryForProbation + allowances).toLocaleString()}원</p>
                                     <p><strong>수습기간 임금:</strong> ${probationSalary.toLocaleString()}원</p>
                                     ${isMinimumApplied ? 
                                         `<p style="color: #dc2626; font-weight: bold;">최저임금 90% 보장으로 인해 ${form.probationDiscount}% 감액이 적용되지 않음</p>` : 
@@ -878,22 +994,22 @@ const navigate = useNavigate();
                 <p><strong>2025년 최저임금:</strong> 시급 ${LEGAL_INFO.MIN_WAGE.toLocaleString()}원, 월급 ${LEGAL_INFO.MIN_MONTHLY.toLocaleString()}원 (209시간 기준)</p>
                 
                 ${form.probationPeriod ? `
-                <div class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                    <p class="font-semibold mb-2 text-yellow-800">■ 수습기간 임금 안내</p>
-                    <p class="text-yellow-700 text-sm mb-2"><strong>수습기간:</strong> ${form.probationPeriod}</p>
-                    <p class="text-yellow-700 text-sm mb-2"><strong>수습기간 임금:</strong> ${probationSalary.toLocaleString()}원 (정상 임금: ${totalSalaryForProbation.toLocaleString()}원)</p>
-                    <p class="text-yellow-700 text-sm mb-2">• 수습기간 중에는 최저임금의 90% 이상을 지급할 수 있습니다 (근로기준법 제35조)</p>
-                                        <p class="text-yellow-700 text-sm mb-2">• 단, 1년 이상 계속 근로하는 근로자에 대해서만 적용됩니다</p>
+                <div class="mt-4 p-4 bg-gray-50 border-l-4 border-gray-400 rounded">
+                    <p class="font-semibold mb-2 text-gray-800">■ 수습기간 임금 안내</p>
+                    <p class="text-gray-700 text-sm mb-2"><strong>수습기간:</strong> ${form.probationPeriod}</p>
+                    <p class="text-gray-700 text-sm mb-2"><strong>수습기간 임금:</strong> ${probationSalary.toLocaleString()}원 (정상 임금: ${(baseSalaryForProbation + allowances).toLocaleString()}원)</p>
+                    <p class="text-gray-700 text-sm mb-2">• 수습기간 중에는 최저임금의 90% 이상을 지급할 수 있습니다 (근로기준법 제35조)</p>
+                                        <p class="text-gray-700 text-sm mb-2">• 단, 1년 이상 계속 근로하는 근로자에 대해서만 적용됩니다</p>
                     ${isMinimumApplied ? 
-                        `<p class="text-yellow-700 text-sm" style="color: #dc2626; font-weight: bold;">• 최저임금 90% 보장으로 인해 ${form.probationDiscount}% 감액이 적용되지 않았습니다</p>` : 
-                        `<p class="text-yellow-700 text-sm">• 적용된 감액률: ${form.probationDiscount}%</p>`
+                        `<p class="text-gray-700 text-sm" style="color: #dc2626; font-weight: bold;">• 최저임금 90% 보장으로 인해 ${form.probationDiscount}% 감액이 적용되지 않았습니다</p>` : 
+                        `<p class="text-gray-700 text-sm">• 적용된 감액률: ${form.probationDiscount}%</p>`
                     }
                 </div>
                 ` : ''}
             </div>
         </section>
 
-        <!-- Social Insurance Section -->
+        {/* Social Insurance Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제8조 (사회보험)
@@ -902,7 +1018,7 @@ const navigate = useNavigate();
                 갑과 을은 근로기준법 및 관련 법령에 따라 4대 사회보험 (국민연금, 건강보험, 고용보험, 산재보험)에 가입하며, 보험료는 관계 법령에 따라 갑과 을이 각각 부담한다.
             </p>
             
-            <!-- 4대보험료 상세 정보 -->
+            {/* 4대보험료 상세 정보 */}
             <div class="mt-6 overflow-x-auto">
                 <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
                     <thead>
@@ -938,7 +1054,7 @@ const navigate = useNavigate();
                             <td>0원</td>
                             <td>${Math.round(insurance.industrialAccident).toLocaleString()}원</td>
                         </tr>
-                        <tr class="bg-blue-50">
+                        <tr class="bg-gray-50">
                             <td><strong>총 보험료</strong></td>
                             <td><strong>${Math.round(insurance.total - insurance.industrialAccident).toLocaleString()}원</strong></td>
                             <td><strong>${Math.round(insurance.total).toLocaleString()}원</strong></td>
@@ -954,7 +1070,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Termination of Employment Section -->
+        {/* Termination of Employment Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제9조 (계약 해지)
@@ -977,7 +1093,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Other Conditions Section -->
+        {/* Other Conditions Section */}
         <section class="mb-8">
             <h2 class="section-title">
                 <span class="icon">■</span> 제10조 (기타 사항)
@@ -994,7 +1110,7 @@ const navigate = useNavigate();
             </div>
         </section>
 
-        <!-- Signature Section -->
+        {/* Signature Section */}
         <section class="mt-12 text-center">
             <h2 class="section-title justify-center">
                 <span class="icon">■</span> 계약 당사자 서명
@@ -1029,14 +1145,13 @@ const navigate = useNavigate();
             </p>
         </section>
 
-        <!-- Footer / Legal Disclaimer -->
+        {/* Footer / Legal Disclaimer */}
         <footer class="mt-16 text-center text-gray-500 text-xs">
-            <p>본 계약서는 근로기준법을 바탕으로 작성된 표준 양식이며, 개별 상황에 따라 추가 또는 수정이 필요할 수 있습니다.</p>
-            <p>법률 전문가와 상담하여 최종 내용을 확정하시길 권장합니다.</p>
+            <p>본 계약서는 근로기준법을 바탕으로 작성되었고, 명시되지 않은 부분은 법적 기준을 따릅니다.</p>
         </footer>
     </div>
 
-    <!-- Print Button -->
+    {/* Print Button */}
     <div class="no-print fixed bottom-4 right-4">
         <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-semibold transition-colors">
             인쇄하기
@@ -1103,11 +1218,13 @@ const navigate = useNavigate();
     }
     
     // 수습기간 임금 계산 (모든 단계에서 사용 가능하도록)
-    const totalSalaryForProbation = form.salaryType === 'monthly' ? (Number(form.baseSalary) + allowances) : totalCalculatedSalary;
-    const probationSalary = form.probationPeriod ? calculateProbationSalary(totalSalaryForProbation, form.probationDiscount) : 0;
+    // 기본급만 감액 적용, 제수당은 그대로 지급
+    const baseSalaryForProbation = form.salaryType === 'monthly' ? Number(form.monthlySalary) : (totalCalculatedSalary - allowances);
+    const probationBaseSalary = form.probationPeriod ? calculateProbationSalary(baseSalaryForProbation, form.probationDiscount) : baseSalaryForProbation;
+    const probationSalary = probationBaseSalary + allowances; // 제수당 추가
     const probationDiscountRate = Number(form.probationDiscount) / 100;
-    const originalDiscountedSalary = totalSalaryForProbation * (1 - probationDiscountRate);
-    const isMinimumApplied = probationSalary > originalDiscountedSalary;
+    const originalDiscountedSalary = baseSalaryForProbation * (1 - probationDiscountRate) + allowances;
+    const isMinimumApplied = probationBaseSalary > (baseSalaryForProbation * (1 - probationDiscountRate));
     
     switch (step) {
       case 0: // 사업장 정보
@@ -1390,6 +1507,8 @@ const navigate = useNavigate();
               </div>
             </div>
             
+
+            
             <div className="form-group">
               <label className="form-label">근무 요일</label>
               <div className="day-selector">
@@ -1571,53 +1690,107 @@ const navigate = useNavigate();
                 <label className="form-label">월 기본급 <span style={{color: 'red'}}>*</span></label>
                   <input 
                   name="monthlySalary" 
-                    type="number" 
-                  value={form.monthlySalary} 
+                    type="text" 
+                  value={formatNumberWithCommas(form.monthlySalary)} 
                     onChange={handleChange} 
                     className="form-input" 
-                  placeholder="예: 2500000"
+                  placeholder="예: 2,500,000"
                   style={{borderColor: !form.monthlySalary ? 'red' : undefined}}
                 />
                 {!form.monthlySalary && <p style={{color: 'red', fontWeight: 'bold'}}>월 기본급은 필수 입력 항목입니다.</p>}
-                <p className="form-help">최저임금(2,096,270원) 이상으로 설정해주세요</p>
-                
-                {/* 월급제 법적 기준 안내 */}
-                {form.monthlySalary && <MonthlyWageLegalGuide form={form} />}
-                </div>
-            )}
-
-            {form.salaryType === 'hourly' && (
-                <div className="form-group">
-                <label className="form-label">시급 <span style={{color: 'red'}}>*</span></label>
-                  <input 
-                    name="hourlyWage" 
-                    type="number" 
-                    value={form.hourlyWage} 
-                    onChange={handleChange} 
-                    className="form-input" 
-                  placeholder="예: 12000"
-                  style={{borderColor: !form.hourlyWage ? 'red' : undefined}}
-                />
-                {!form.hourlyWage && <p style={{color: 'red', fontWeight: 'bold'}}>시급은 필수 입력 항목입니다.</p>}
-                <p className="form-help">최저임금(10,030원/시간) 이상으로 설정해주세요</p>
-                
-                {/* 시급제 법적 기준 안내 */}
-                {form.hourlyWage && <HourlyWageLegalGuide form={form} />}
-              </div>
-            )}
-
-            <div className="form-group">
+                {(() => {
+                  const minimumWage = calculateMinimumMonthlyWage(form);
+                  return (
+                    <>
+                      <p className="form-help">
+                        근무시간 등을 고려할 때 최저 월 기본급은 <strong>{minimumWage.totalMinimumWage.toLocaleString()}원</strong> 이상으로 설정되어야 합니다.
+                      </p>
+                      <div style={{
+                        marginTop: 8,
+                        padding: 10,
+                        backgroundColor: '#f8fafc',
+                        borderRadius: 6,
+                        border: '1px solid #e2e8f0',
+                        fontSize: '12px',
+                        color: '#475569'
+                      }}>
+                        <p style={{margin: '0 0 4px 0', fontWeight: 'bold', color: '#374151'}}>📊 최저 월 기본급 계산 근거:</p>
+                        <ul style={{margin: 0, paddingLeft: 16, lineHeight: 1.4}}>
+                          <li>월간 근무시간: {Math.round(minimumWage.monthlyWorkHours * 10) / 10}시간</li>
+                          <li>기본 최저임금: {minimumWage.monthlyWorkHours.toFixed(1)}시간 × 10,030원 = {minimumWage.basicMinimumWage.toLocaleString()}원</li>
+                          {minimumWage.weeklyHolidayPay > 0 && (
+                            <li>주휴수당: 10,030원 × 8시간 × 4.345주 = {minimumWage.weeklyHolidayPay.toLocaleString()}원</li>
+                          )}
+                          <li><strong>최저 월 기본급: {minimumWage.totalMinimumWage.toLocaleString()}원</strong></li>
+                        </ul>
+                      </div>
+                      <div style={{
+                        marginTop: 8,
+                        padding: 10,
+                        backgroundColor: '#f8fafc',
+                        borderRadius: 6,
+                        border: '1px solid #e2e8f0',
+                        fontSize: '12px',
+                        color: '#475569'
+                      }}>
+                        <p style={{margin: 0, lineHeight: 1.4}}>
+                          입력하신 월 기본급 <strong>{Number(form.monthlySalary || 0).toLocaleString()}원</strong>을 기준으로 한다면, 기본급과 별도로 주휴수당, 제수당, 연장수당이 추가로 붙어서 실제 월급은 더 커집니다. 예상 되는 실제 월급 총액은 아래의 "■ 예상 월급 명세서 내용을 참고 하세요
+                        </p>
+                      </div>
+                    </>
+                  );
+                                  })()}
+                  
+            <div className="form-group" style={{marginTop: 16}}>
               <label className="form-label">제수당</label>
               <input 
                 name="allowances" 
-                type="number" 
-                value={form.allowances} 
+                type="text" 
+                value={formatNumberWithCommas(form.allowances)} 
                 onChange={handleChange} 
                 className="form-input" 
-                placeholder="예: 200000"
+                placeholder="예: 200,000"
               />
               <p className="form-help">식대, 교통비, 복리후생비 등 (선택사항)</p>
             </div>
+
+            {/* 월급제 법적 기준 안내 */}
+            {form.monthlySalary && <MonthlyWageLegalGuide form={form} />}
+            </div>
+        )}
+
+        {form.salaryType === 'hourly' && (
+            <div className="form-group">
+            <label className="form-label">시급 <span style={{color: 'red'}}>*</span></label>
+              <input 
+                name="hourlyWage" 
+                type="text" 
+                value={formatNumberWithCommas(form.hourlyWage)} 
+                onChange={handleChange} 
+                className="form-input" 
+              placeholder="예: 12,000"
+              style={{borderColor: !form.hourlyWage ? 'red' : undefined}}
+            />
+            {!form.hourlyWage && <p style={{color: 'red', fontWeight: 'bold'}}>시급은 필수 입력 항목입니다.</p>}
+            <p className="form-help">최저임금(10,030원/시간) 이상으로 설정해주세요</p>
+            
+            <div className="form-group" style={{marginTop: 16}}>
+              <label className="form-label">제수당</label>
+              <input 
+                name="allowances" 
+                type="text" 
+                value={formatNumberWithCommas(form.allowances)} 
+                onChange={handleChange} 
+                className="form-input" 
+                placeholder="예: 200,000"
+              />
+              <p className="form-help">식대, 교통비, 복리후생비 등 (선택사항)</p>
+            </div>
+            
+            {/* 시급제 법적 기준 안내 */}
+            {form.hourlyWage && <HourlyWageLegalGuide form={form} />}
+          </div>
+        )}
           </div>
         );
 
@@ -1739,26 +1912,53 @@ const navigate = useNavigate();
                       </select>
                       
                       {/* 수습기간 임금 계산 결과 표시 */}
-                      <div style={{
-                        marginTop: 8,
-                        padding: 12,
-                        backgroundColor: '#f0f9ff',
-                        borderRadius: 6,
-                        border: '1px solid #0ea5e9',
-                        fontSize: '13px'
-                      }}>
-                        <p style={{margin: 0, fontWeight: 'bold', color: '#0c4a6e'}}>💰 수습기간 임금 계산:</p>
-                        <ul style={{margin: '4px 0 0 0', paddingLeft: 16, color: '#0c4a6e'}}>
-                          <li>정상 임금: {totalSalaryForProbation.toLocaleString()}원</li>
-                          <li>{form.probationDiscount}% 감액 후: {originalDiscountedSalary.toLocaleString()}원</li>
-                          <li>최종 수습기간 임금: <strong>{probationSalary.toLocaleString()}원</strong></li>
-                          {isMinimumApplied && (
-                            <li style={{color: '#dc2626', fontWeight: 'bold'}}>
-                              ⚠️ 최저임금 90% 보장으로 인해 {form.probationDiscount}% 감액이 적용되지 않았습니다
-                            </li>
-                          )}
-                        </ul>
-                      </div>
+                      {(() => {
+                        // 수습기간 임금 계산을 위한 변수들
+                        const workStats = calcWorkStats(form);
+                        const monthlyWorkHours = workStats.totalMonth / 60; // 분을 시간으로 변환
+                        const weeklyWorkHours = workStats.totalWeek / 60; // 분을 시간으로 변환
+                        
+                        // 기본급 계산 (월급제 vs 시급제 구분)
+                        let baseSalaryForProbation;
+                        if (form.salaryType === 'monthly') {
+                          baseSalaryForProbation = Number(form.monthlySalary || 0);
+                        } else {
+                          // 시급제: 시급 × 월 근무시간
+                          const hourlyWage = Number(form.hourlyWage || 0);
+                          baseSalaryForProbation = Math.round(hourlyWage * monthlyWorkHours);
+                        }
+                        
+                        const allowances = Number(form.allowances || 0);
+                        const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount);
+                        const probationSalary = probationBaseSalary + allowances;
+                        const isMinimumApplied = probationBaseSalary > baseSalaryForProbation * (1 - Number(form.probationDiscount) / 100);
+                        
+                        return (
+                          <div style={{
+                            marginTop: 8,
+                            padding: 12,
+                            backgroundColor: '#f0f9ff',
+                            borderRadius: 6,
+                            border: '1px solid #0ea5e9',
+                            fontSize: '13px'
+                          }}>
+                            <p style={{margin: 0, fontWeight: 'bold', color: '#0c4a6e'}}>💰 수습기간 임금 계산:</p>
+                            <ul style={{margin: '4px 0 0 0', paddingLeft: 16, color: '#0c4a6e'}}>
+                              <li>정상 기본급: {baseSalaryForProbation.toLocaleString()}원</li>
+                              <li>정상 제수당: {allowances.toLocaleString()}원</li>
+                              <li>정상 총 임금: {(baseSalaryForProbation + allowances).toLocaleString()}원</li>
+                              <li>수습기간 기본급: {probationBaseSalary.toLocaleString()}원 (기본급만 감액)</li>
+                              <li>수습기간 제수당: {allowances.toLocaleString()}원 (제수당은 그대로)</li>
+                              <li>최종 수습기간 임금: <strong>{probationSalary.toLocaleString()}원</strong></li>
+                              {isMinimumApplied && (
+                                <li style={{color: '#dc2626', fontWeight: 'bold'}}>
+                                  ⚠️ 최저임금 90% 보장으로 인해 {form.probationDiscount}% 감액이 적용되지 않았습니다
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                   
@@ -1940,7 +2140,7 @@ const navigate = useNavigate();
                       <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
                         <div><strong>임금 형태:</strong> {form.salaryType === 'monthly' ? '월급제' : '시급제'}</div>
                         {form.salaryType === 'monthly' ? (
-                          <div><strong>월 기본급:</strong> {Number(form.baseSalary).toLocaleString()}원</div>
+                          <div><strong>월 기본급:</strong> {Number(form.monthlySalary).toLocaleString()}원</div>
                         ) : (
                           <div><strong>시급:</strong> {Number(form.hourlyWage).toLocaleString()}원</div>
                         )}
@@ -1950,24 +2150,45 @@ const navigate = useNavigate();
                       </td>
                     </tr>
                     
-                    {/*  */}
-                    {form.probationPeriod && (
-                      <tr style={{backgroundColor: '#fef3c7'}}>
-                        <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}></td>
-                        <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                          <div><strong>수습기간:</strong> {form.probationPeriod}</div>
-                          <div><strong>정상 임금:</strong> {totalSalaryForProbation.toLocaleString()}원</div>
-                          <div><strong>수습기간 임금:</strong> {probationSalary.toLocaleString()}원</div>
-                          {isMinimumApplied ? (
-                            <div style={{color: '#dc2626', fontWeight: 'bold'}}>
-                              ⚠️ 최저임금 90% 보장으로 인해 {form.probationDiscount}% 감액이 적용되지 않음
-                            </div>
-                          ) : (
-                            <div><strong>감액률:</strong> {form.probationDiscount}%</div>
-                          )}
-                        </td>
-                      </tr>
-                    )}
+                    {/* 수습기간 정보 */}
+                    {form.probationPeriod && (() => {
+                      // 수습기간 임금 계산을 위한 변수들
+                      const workStats = calcWorkStats(form);
+                      const monthlyWorkHours = workStats.totalMonth / 60; // 분을 시간으로 변환
+                      
+                      // 기본급 계산 (월급제 vs 시급제 구분)
+                      let baseSalaryForProbation;
+                      if (form.salaryType === 'monthly') {
+                        baseSalaryForProbation = Number(form.monthlySalary || 0);
+                      } else {
+                        // 시급제: 시급 × 월 근무시간
+                        const hourlyWage = Number(form.hourlyWage || 0);
+                        baseSalaryForProbation = Math.round(hourlyWage * monthlyWorkHours);
+                      }
+                      
+                      const allowances = Number(form.allowances || 0);
+                      const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount);
+                      const probationSalary = probationBaseSalary + allowances;
+                      const isMinimumApplied = probationBaseSalary > baseSalaryForProbation * (1 - Number(form.probationDiscount) / 100);
+                      
+                      return (
+                        <tr style={{backgroundColor: '#fef3c7'}}>
+                          <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>수습기간</td>
+                          <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
+                            <div><strong>수습기간:</strong> {form.probationPeriod}</div>
+                            <div><strong>정상 임금:</strong> {(baseSalaryForProbation + allowances).toLocaleString()}원</div>
+                            <div><strong>수습기간 임금:</strong> {probationSalary.toLocaleString()}원</div>
+                            {isMinimumApplied ? (
+                              <div style={{color: '#dc2626', fontWeight: 'bold'}}>
+                                ⚠️ 최저임금 90% 보장으로 인해 {form.probationDiscount}% 감액이 적용되지 않음
+                              </div>
+                            ) : (
+                              <div><strong>감액률:</strong> {form.probationDiscount}%</div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })()}
                     
                     {/* 기타 사항 */}
                     <tr style={{backgroundColor: '#f9fafb'}}>
@@ -1982,27 +2203,13 @@ const navigate = useNavigate();
               </div>
             </div>
 
-            {/* 근로계약서 다운로드 버튼 */}
-            <div className="download-section" style={{textAlign: 'center', marginTop: 32}}>
+            {/* 근로계약서 미리보기 버튼 */}
+            <div className="preview-section" style={{textAlign: 'center', marginTop: 32}}>
               <button 
-                onClick={async () => {
-                  try {
-                    // 먼저 근로계약서 페이지를 새 탭에서 열기
-                    window.open('/contract-download', '_blank');
-                    
-                    // 백그라운드에서 PDF 다운로드 진행
-                    setTimeout(async () => {
-                      try {
-                        await handleSavePDF();
-                      } catch (error) {
-                        console.error('PDF 생성 중 오류:', error);
-                        // 사용자에게 오류 알림 (선택사항)
-                      }
-                    }, 1000); // 1초 후 다운로드 시작
-                  } catch (error) {
-                    console.error('페이지 열기 중 오류:', error);
-                    alert('페이지 열기 중 오류가 발생했습니다. 다시 시도해주세요.');
-                  }
+                onClick={() => {
+                  // 폼 데이터를 URL 파라미터로 전달하여 미리보기 페이지로 이동
+                  const formData = encodeURIComponent(JSON.stringify(form));
+                  navigate(`/contract-preview?formData=${formData}`);
                 }}
                 style={{
                   backgroundColor: '#2563eb',
@@ -2027,7 +2234,7 @@ const navigate = useNavigate();
                   e.target.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                 }}
               >
-                📄 근로계약서 보기 및 다운로드
+                👁️ 근로계약서 미리보기
               </button>
               <p style={{
                 marginTop: 12,
@@ -2035,7 +2242,7 @@ const navigate = useNavigate();
                 color: '#6b7280',
                 fontStyle: 'italic'
               }}>
-                근로계약서 페이지가 열리고 PDF가 자동으로 다운로드됩니다
+                웹상에서 계약서를 미리보기하고 인쇄 또는 다운로드할 수 있습니다
               </p>
             </div>
           </div>
@@ -2094,12 +2301,23 @@ const navigate = useNavigate();
           >
             ← 이전
           </button>
-          <button 
-            onClick={() => setStep(Math.min(steps.length - 1, step + 1))} 
-            className={`nav-btn next-btn ${step === steps.length - 1 ? 'hidden' : ''}`}
-          >
-            다음 →
-          </button>
+          {(() => {
+            // 근로시간 검증 (근로시간 입력 단계에서만 적용)
+            const isWorkTimeStep = step === 4; // 근로시간 입력 단계 (step 4)
+            const compliance = isWorkTimeStep ? checkWorkTimeCompliance(form) : { isCompliant: true };
+            const isDisabled = isWorkTimeStep && !compliance.isCompliant;
+            
+            return (
+              <button 
+                onClick={() => setStep(Math.min(steps.length - 1, step + 1))} 
+                className={`nav-btn next-btn ${step === steps.length - 1 ? 'hidden' : ''} ${isDisabled ? 'disabled' : ''}`}
+                disabled={isDisabled}
+                title={isDisabled ? '근로시간이 법적 한도를 초과합니다. 근무시간을 조정해주세요.' : ''}
+              >
+                다음 →
+              </button>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -2114,13 +2332,17 @@ function calculateBreakTime(startTime, endTime) {
   const end = getMinutes(endTime);
   let workMinutes = end > start ? end - start : (end + 24 * 60) - start;
   
-  // 근로기준법 제54조: 4시간 초과 시 30분, 8시간 초과 시 1시간 휴게
+  // 새로운 휴게시간 규칙
   if (workMinutes <= 4 * 60) {
-    return 0; // 4시간 이하: 휴게 없음
+    return 30; // 4시간 근무시: 30분
   } else if (workMinutes <= 8 * 60) {
-    return 30; // 4시간 초과 ~ 8시간 이하: 30분 휴게
+    return 60; // 8시간 근무시: 1시간
+  } else if (workMinutes <= 12 * 60) {
+    return 90; // 8시간 이상 12시간 이내: 1시간 30분
+  } else if (workMinutes <= 16 * 60) {
+    return 120; // 12시간 이상 16시간까지: 2시간
   } else {
-    return 60; // 8시간 초과: 1시간 휴게
+    return 120; // 16시간 초과시에도 최대 2시간
   }
 }
 
@@ -2195,12 +2417,31 @@ function calculateMinimumMonthlyWage(form) {
   };
 }
 
-// 연장근로 경고 컴포넌트
-function OvertimeWarning({ form }) {
+// 근로시간 법적 준수 여부 확인 함수
+function checkWorkTimeCompliance(form) {
   const workStats = calcWorkStats(form);
   const weeklyOvertimeHours = workStats.over / 60; // 분을 시간으로 변환
+  const weeklyTotalHours = workStats.totalWeek / 60; // 분을 시간으로 변환
   
-  if (weeklyOvertimeHours > 12) {
+  // 주 52시간 초과 여부 (40시간 기본 + 12시간 연장 = 52시간)
+  const isOver52Hours = weeklyTotalHours > 52;
+  // 주 12시간 연장근로 초과 여부
+  const isOver12HoursOvertime = weeklyOvertimeHours > 12;
+  
+  return {
+    isCompliant: !isOver52Hours && !isOver12HoursOvertime,
+    isOver52Hours,
+    isOver12HoursOvertime,
+    weeklyTotalHours: Math.round(weeklyTotalHours * 10) / 10,
+    weeklyOvertimeHours: Math.round(weeklyOvertimeHours * 10) / 10
+  };
+}
+
+// 연장근로 경고 컴포넌트
+function OvertimeWarning({ form }) {
+  const compliance = checkWorkTimeCompliance(form);
+  
+  if (compliance.isOver12HoursOvertime || compliance.isOver52Hours) {
     return (
       <div style={{
         marginTop: 16,
@@ -2215,14 +2456,14 @@ function OvertimeWarning({ form }) {
           fontSize: '16px',
           fontWeight: 'bold'
         }}>
-          ■ 연장근로 한도 초과 경고
+          ■ 근로시간 법적 한도 초과 경고
         </h4>
         <p style={{
           margin: '0 0 8px 0',
           color: '#7f1d1d',
           fontSize: '14px'
         }}>
-          현재 설정된 연장근로 시간이 주 12시간 한도를 초과합니다.
+          현재 설정된 근로시간이 법적 한도를 초과하여 다음 단계로 진행할 수 없습니다.
         </p>
         <div style={{
           marginTop: 8,
@@ -2232,10 +2473,21 @@ function OvertimeWarning({ form }) {
           fontSize: '13px'
         }}>
           <p style={{margin: '0 0 4px 0', fontWeight: 'bold'}}>현재 설정:</p>
-          <p style={{margin: 0}}>• 주간 연장근로: {Math.round(weeklyOvertimeHours * 10) / 10}시간</p>
-          <p style={{margin: 0}}>• 법적 한도: 12시간</p>
+          <p style={{margin: 0}}>• 주간 총 근로시간: {compliance.weeklyTotalHours}시간</p>
+          <p style={{margin: 0}}>• 주간 연장근로: {compliance.weeklyOvertimeHours}시간</p>
+          <p style={{margin: 0}}>• 법적 한도: 주 52시간 (기본 40시간 + 연장 12시간)</p>
+          {compliance.isOver52Hours && (
+            <p style={{margin: '8px 0 0 0', fontWeight: 'bold', color: '#dc2626'}}>
+              ⚠️ 주 52시간을 초과하는 근로는 불법입니다.
+            </p>
+          )}
+          {compliance.isOver12HoursOvertime && (
+            <p style={{margin: '8px 0 0 0', fontWeight: 'bold', color: '#dc2626'}}>
+              ⚠️ 주 12시간을 초과하는 연장근로는 불법입니다.
+            </p>
+          )}
           <p style={{margin: '8px 0 0 0', fontWeight: 'bold', color: '#dc2626'}}>
-            근로기준법 제53조에 따라 주 12시간을 초과하는 연장근로는 불법입니다.
+           💡 해결 방법: 근무시간을 조정하여 주 52시간 이하로 맞춰주세요.
           </p>
         </div>
       </div>
@@ -2255,57 +2507,64 @@ function WorkTimeSummary({ form }) {
   const weeklyHoliday = checkWeeklyHolidayEligibility(weekWorkHours);
   
   return (
-    <div className="work-time-summary">
-      <h3 className="summary-title">근무시간 요약</h3>
-      <div className="summary-content">
-        <div className="summary-item">
-          <span className="summary-label">주당 근무시간:</span>
-          <span className="summary-value">{getHourStr(workStats.totalWeek)}</span>
-        </div>
-        <div className="summary-item">
-          <span className="summary-label">월간 근무시간(예상):</span>
-          <span className="summary-value">{getHourStr(workStats.totalMonth)}</span>
-        </div>
-        <div className="summary-item">
-          <span className="summary-label">야간근로(22:00~06:00):</span>
-          <span className="summary-value">{getHourStr(workStats.night)}</span>
-        </div>
-        <div className="summary-item">
-          <span className="summary-label">연장근로(1일 8시간 초과):</span>
-          <span className="summary-value">{getHourStr(workStats.over)}</span>
+    <div className="work-time-summary-compact">
+      <div className="summary-header">
+        <h3 className="summary-title-compact">📊 근무시간 요약</h3>
+        <div className="summary-stats-grid">
+          <div className="stat-card">
+            <div className="stat-label">주당 근무</div>
+            <div className="stat-value">{getHourStr(workStats.totalWeek)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">월간 근무</div>
+            <div className="stat-value">{getHourStr(workStats.totalMonth)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">야간근로</div>
+            <div className="stat-value">{getHourStr(workStats.night)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">연장근로</div>
+            <div className="stat-value">{getHourStr(workStats.over)}</div>
+          </div>
         </div>
       </div>
-      <p className="summary-note">※ 월평균 4.345주 기준으로 계산됩니다</p>
       
-      {/* 4대보험 및 주휴수당 대상 여부 안내 */}
-      <div className="legal-status-section">
-        <h4 className="legal-status-title">■ 법적 기준 안내</h4>
-        <div className="legal-status-content">
-          <div className={`legal-status-item ${insurance.isEligible ? 'eligible' : 'not-eligible'}`}>
-            <div className="status-icon">
-              {insurance.isEligible ? '■' : '□'}
-            </div>
-            <div className="status-content">
-              <div className="status-label">4대보험 의무가입</div>
-              <div className="status-description">{insurance.reason}</div>
-              <div className="status-detail">
-                기준: 주 15시간 이상 또는 월 60시간 이상
-              </div>
-            </div>
+      <div className="legal-status-compact">
+        <div className="legal-status-header">
+          <span className="legal-icon">⚖️</span>
+          <span className="legal-title">법적 기준</span>
+        </div>
+        <div className="legal-status-grid">
+          <div className={`legal-badge ${insurance.isEligible ? 'eligible' : 'not-eligible'}`}>
+            <span className="badge-icon">{insurance.isEligible ? '✅' : '❌'}</span>
+            <span className="badge-text">4대보험 대상자</span>
           </div>
-          
-          <div className={`legal-status-item ${weeklyHoliday.isEligible ? 'eligible' : 'not-eligible'}`}>
-            <div className="status-icon">
-              {weeklyHoliday.isEligible ? '■' : '□'}
-            </div>
-            <div className="status-content">
-              <div className="status-label">주휴수당 대상</div>
-              <div className="status-description">{weeklyHoliday.reason}</div>
-              <div className="status-detail">
-                기준: 1주 15시간 이상 근로
-              </div>
-            </div>
+          <div className={`legal-badge ${weeklyHoliday.isEligible ? 'eligible' : 'not-eligible'}`}>
+            <span className="badge-icon">{weeklyHoliday.isEligible ? '✅' : '❌'}</span>
+            <span className="badge-text">주휴수당 대상자</span>
           </div>
+        </div>
+        <div className="legal-explanations">
+          <div className="legal-explanation-item">
+            <div className="explanation-header">
+              <span className="explanation-icon">🏥</span>
+              <span className="explanation-title">4대보험 의무가입 조건</span>
+            </div>
+            <div className="explanation-text">{insurance.reason}</div>
+            <div className="explanation-criteria">기준: 주 15시간 이상 또는 월 60시간 이상 근로 시, 4대보험 의무가입</div>
+          </div>
+          <div className="legal-explanation-item">
+            <div className="explanation-header">
+              <span className="explanation-icon">💰</span>
+              <span className="explanation-title">주휴수당 조건</span>
+            </div>
+            <div className="explanation-text">{weeklyHoliday.reason}</div>
+            <div className="explanation-criteria">기준: 1주 15시간 이상 근로 시, 주휴수당 의무 지급</div>
+          </div>
+        </div>
+        <div className="legal-note">
+          <small>※ 월평균 4.345주 기준으로 계산됩니다</small>
         </div>
       </div>
     </div>
@@ -2383,30 +2642,51 @@ function MonthlyWageLegalGuide({ form }) {
             fontSize: '14px',
             fontWeight: 'bold',
             color: '#374151'
-          }}>■ 법적 최소 임금 상세</h5>
-          <div className="breakdown-items" style={{fontSize: '13px'}}>
-            <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
-              <span className="breakdown-label">기본급 ({minimumWage.monthlyWorkHours}시간 × {LEGAL_INFO.MIN_WAGE.toLocaleString()}원):</span>
-              <span className="breakdown-value">{minimumWage.basicMinimumWage.toLocaleString()}원</span>
-            </div>
-            {minimumWage.weeklyHolidayPay > 0 && (
-              <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
-                <span className="breakdown-label">주휴수당 ({minimumWage.weeklyWorkHours}시간/주):</span>
-                <span className="breakdown-value">{minimumWage.weeklyHolidayPay.toLocaleString()}원</span>
-              </div>
-            )}
-            {minimumWage.overtimePay > 0 && (
-              <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
-                <span className="breakdown-label">연장근로수당 ({minimumWage.overtimeHours}시간, 50%):</span>
-                <span className="breakdown-value">{minimumWage.overtimePay.toLocaleString()}원</span>
-              </div>
-            )}
-            {minimumWage.nightPay > 0 && (
-              <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
-                <span className="breakdown-label">야간근로수당 ({minimumWage.nightHours}시간, 50%):</span>
-                <span className="breakdown-value">{minimumWage.nightPay.toLocaleString()}원</span>
-              </div>
-            )}
+          }}>■ 예상되는 월급 명세서 내용</h5>
+          <div className="breakdown-items" style={{fontSize: '14px', fontWeight: '500'}}>
+            {/* 시급 계산 */}
+            {(() => {
+              const workStats = calcWorkStats(form);
+              const monthlyWorkHours = workStats.totalMonth / 60; // 분을 시간으로 변환
+              const weeklyWorkHours = workStats.totalWeek / 60; // 분을 시간으로 변환
+              const hourlyWage = inputWage / monthlyWorkHours; // 월 기본급을 월 근무시간으로 나눔
+              
+              return (
+                <>
+                  <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
+                    <span className="breakdown-label">기본급 ({monthlyWorkHours.toFixed(1)}시간 × {Math.round(hourlyWage).toLocaleString()}원):</span>
+                    <span className="breakdown-value">(확정){inputWage.toLocaleString()}원</span>
+                  </div>
+                  {weeklyWorkHours >= 15 && (
+                    <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
+                      <span className="breakdown-label">주휴수당 ({Math.round(hourlyWage).toLocaleString()}원 × 8시간 × 4.345주):</span>
+                      <span className="breakdown-value">(예상){Math.round(hourlyWage * 8 * 4.345).toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {allowances > 0 && (
+                    <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
+                      <span className="breakdown-label">제수당:</span>
+                      <span className="breakdown-value">{allowances.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
+                    <span className="breakdown-label">기타 연장근로수당 등:</span>
+                    <span className="breakdown-value">별도</span>
+                  </div>
+                  <div className="breakdown-item" style={{
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    marginBottom: 6,
+                    borderTop: '1px solid #e5e7eb',
+                    paddingTop: 8,
+                    fontWeight: 'bold'
+                  }}>
+                    <span className="breakdown-label">월 총 임금:</span>
+                    <span className="breakdown-value">(예상){(inputWage + (weeklyWorkHours >= 15 ? Math.round(hourlyWage * 8 * 4.345) : 0) + allowances).toLocaleString()}원 (세전)</span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
         
@@ -2511,14 +2791,14 @@ function HourlyWageLegalGuide({ form }) {
             fontWeight: 'bold',
             color: '#374151'
           }}>■ 월 예상 임금 계산</h5>
-          <div className="breakdown-items" style={{fontSize: '13px'}}>
+          <div className="breakdown-items" style={{fontSize: '14px', fontWeight: '500'}}>
             <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
-              <span className="breakdown-label">기본급 ({Math.round(monthlyWorkHours * 10) / 10}시간):</span>
+              <span className="breakdown-label">기본급 ({Math.round(monthlyWorkHours * 10) / 10}시간 × {inputHourlyWage.toLocaleString()}원):</span>
               <span className="breakdown-value">{basicMonthlyWage.toLocaleString()}원</span>
             </div>
             {weeklyHolidayPay > 0 && (
               <div className="breakdown-item" style={{display: 'flex', justifyContent: 'space-between', marginBottom: 6}}>
-                <span className="breakdown-label">주휴수당 ({Math.round(weeklyWorkHours * 10) / 10}시간/주):</span>
+                <span className="breakdown-label">주휴수당 ({Math.round(weeklyWorkHours * 10) / 10}시간/주 × 8시간 × 4.345주 × {inputHourlyWage.toLocaleString()}원):</span>
                 <span className="breakdown-value">{weeklyHolidayPay.toLocaleString()}원</span>
               </div>
             )}
@@ -2595,8 +2875,7 @@ function HourlyWageLegalGuide({ form }) {
               fontSize: '13px',
               color: '#1e40af'
             }}>
-              시급제는 기본급 외에 연장근로수당, 야간근로수당, 주휴수당이 별도로 지급됩니다. 
-              실제 월 임금은 위 계산 결과보다 높을 수 있습니다.
+              위의 월 예상 임금은 기본급과 주휴수당을 포함하여 계산하였으나, 연장근로, 야간근로 수당은 빠져 있기 때문에 실제 월 임금은 더 높아질 수 있습니다.
             </p>
           </div>
         )}

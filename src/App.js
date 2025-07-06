@@ -2,7 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import './App.css';
 import ContractForm from './ContractForm';
+import ContractPreview from './ContractPreview';
 import AllowanceCalculator from './AllowanceCalculator';
+import QRCode from 'react-qr-code';
 
 function Home() {
   const navigate = useNavigate();
@@ -12,17 +14,6 @@ function Home() {
       <div className="home-content">
         {/* Hero Section */}
         <div className="hero-section">
-          <div className="logo-container">
-            <div className="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" className="logo-svg">
-                <path d="M3 3h18v18H3V3z" stroke="currentColor" strokeWidth="2" fill="none"/>
-                <path d="M7 7h10v2H7V7z" fill="currentColor"/>
-                <path d="M7 11h10v2H7v-2z" fill="currentColor"/>
-                <path d="M7 15h6v2H7v-2z" fill="currentColor"/>
-              </svg>
-            </div>
-          </div>
-          
           <h1 className="hero-title">사장님은 법대로</h1>
           <p className="hero-subtitle">곧 직원쓸 예정인, 초보 사장님의 법 잘알 도우미</p>
         </div>
@@ -54,6 +45,13 @@ function Home() {
           </button>
         </div>
 
+        {/* QR코드: home-footer의 글귀 바로 위에 중앙 배치 */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24, marginBottom: 0 }}>
+          <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #eee' }}>
+            <QRCode value="https://whimsical-raindrop-cf7019.netlify.app/" size={88} level="L" />
+            <span style={{ fontSize: 12, color: '#666', marginTop: 8 }}>외부 배포 바로가기</span>
+          </div>
+        </div>
         {/* Footer */}
         <div className="home-footer">
           <p className="footer-text">신뢰할 수 있는 비즈니스 파트너</p>
@@ -131,6 +129,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/contract" element={<ContractForm />} />
+        <Route path="/contract-preview" element={<ContractPreview />} />
         <Route path="/allowance-menu" element={<AllowanceMenu />} />
         <Route path="/allowance" element={<AllowanceCalculator />} />
         <Route path="/allowance/monthly" element={<AllowanceCalculator />} />
