@@ -1503,7 +1503,7 @@ function getTerminationText(form) {
               {/* 법적 기준: 회색 박스 */}
               <div className="guide-tip" style={{background: '#f1f5f9', borderRadius: 6, padding: 10, color: '#0c4a6e', marginTop: 8}}>
                 <p className="guide-tip-title" style={{fontWeight: 'bold', color: '#334155', marginBottom: 2}}>💡 법적 기준</p>
-                <p className="guide-tip-text">• 1일 8시간, 1주 40시간이 기본 근로시간입니다<br/>• 1일 8시간 초과는 연장근로로 50% 가산 지급<br/>• 22:00~06:00 근무는 야간근로로 50% 가산 지급<br/>• 휴게시간은 근로기준법에 따라 자동 계산됩니다 (4시간 초과 시 30분, 8시간 초과 시 1시간)</p>
+                <p className="guide-tip-text">• 1일 8시간, 1주 40시간이 기본 근로시간입니다<br/>• 1일 8시간 초과는 연장근로로 50% 가산 지급<br/>• 22:00~06:00 근무는 야간근로로 50% 가산 지급<br/>• 휴게시간은 근로기준법에 따라 자동 계산됩니다 (4시간 미만: 없음, 4시간 이상~8시간 미만: 30분, 8시간: 1시간, 8시간 초과: 1시간 30분, 12시간 초과: 2시간)</p>
               </div>
             </div>
             
@@ -2324,7 +2324,7 @@ function getTerminationText(form) {
   );
 }
 
-// 휴게시간 자동 계산 함수 (근로기준법 제54조)
+// 휴게시간 자동 계산 함수 (근로기준법 제54조 - 수정된 규칙)
 function calculateBreakTime(startTime, endTime) {
   if (!startTime || !endTime) return 0;
   
@@ -2332,15 +2332,17 @@ function calculateBreakTime(startTime, endTime) {
   const end = getMinutes(endTime);
   let workMinutes = end > start ? end - start : (end + 24 * 60) - start;
   
-  // 새로운 휴게시간 규칙
-  if (workMinutes <= 4 * 60) {
-    return 30; // 4시간 근무시: 30분
-  } else if (workMinutes <= 8 * 60) {
-    return 60; // 8시간 근무시: 1시간
+  // 수정된 휴게시간 규칙
+  if (workMinutes < 4 * 60) {
+    return 0; // 4시간 미만: 휴게시간 없음
+  } else if (workMinutes < 8 * 60) {
+    return 30; // 4시간 이상 ~ 8시간 미만: 30분
+  } else if (workMinutes === 8 * 60) {
+    return 60; // 8시간: 1시간
   } else if (workMinutes <= 12 * 60) {
-    return 90; // 8시간 이상 12시간 이내: 1시간 30분
+    return 90; // 8시간 초과 ~ 12시간 이하: 1시간 30분
   } else if (workMinutes <= 16 * 60) {
-    return 120; // 12시간 이상 16시간까지: 2시간
+    return 120; // 12시간 초과 ~ 16시간 이하: 2시간
   } else {
     return 120; // 16시간 초과시에도 최대 2시간
   }
