@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   timeStrToMinutes, 
@@ -17,7 +17,7 @@ function ContractPreview() {
   const [form, setForm] = useState(null);
 
   // 1. Move generateContractHtml above useEffect
-  const generateContractHtml = (form) => {
+  const generateContractHtml = useCallback((form) => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 
       year: 'numeric', 
@@ -882,7 +882,7 @@ function ContractPreview() {
 
     setContractHtml(htmlContent);
     setIsLoading(false);
-  };
+  }, [form]);
 
   useEffect(() => {
     // URL 파라미터에서 폼 데이터 가져오기
@@ -901,7 +901,7 @@ function ContractPreview() {
     } else {
       setIsLoading(false);
     }
-  }, [location]);
+  }, [location, generateContractHtml]);
 
   // 시간 계산 유틸 (공통 함수 사용)
   function getMinutes(t) {
