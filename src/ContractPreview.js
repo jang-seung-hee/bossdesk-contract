@@ -104,7 +104,6 @@ function ContractPreview() {
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
     let overtimeHours = 0, nightHours = 0, standardMonthlyHours = 0;
-    let totalCalculatedSalary = 0;
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       // 야간근로 상수 정의

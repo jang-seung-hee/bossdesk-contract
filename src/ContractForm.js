@@ -449,7 +449,6 @@ function getTerminationText(form) {
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
     let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
-    let totalCalculatedSalary = 0;
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
@@ -1190,7 +1189,6 @@ function getTerminationText(form) {
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
     let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
-    let totalCalculatedSalary = 0;
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
