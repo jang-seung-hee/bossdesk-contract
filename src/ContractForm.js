@@ -7,6 +7,7 @@ import {
   parseNumberFromCommas,
   LEGAL_INFO,
   calculateProbationSalary,
+  calculateInsurance,
   checkInsuranceEligibility,
   checkWeeklyHolidayEligibility,
   getPracticalBreakMinutes,
@@ -431,57 +432,24 @@ function getTerminationText(form) {
     }
   };
 
-  // 카카오 주소 API 스크립트 동적 로드
-  React.useEffect(() => {
-    if (!window.daum) {
-      const script = document.createElement('script');
-      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
+  const handleSavePDF = async () => {
+    // 표준근로계약서 HTML 생성
+    const contractDate = new Date().toLocaleDateString('ko-KR', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
 
-  // 카카오 주소 API 스크립트 동적 로드
-  React.useEffect(() => {
-    if (!window.daum) {
-      const script = document.createElement('script');
-      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
-  // 카카오 주소 API 스크립트 동적 로드
-  React.useEffect(() => {
-    if (!window.daum) {
-      const script = document.createElement('script');
-      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
-  // 카카오 주소 API 스크립트 동적 로드
-  React.useEffect(() => {
-    if (!window.daum) {
-      const script = document.createElement('script');
-      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
-  // 각 단계별 입력 폼
-  const renderStep = () => {
-    // 시급제 계산을 위한 변수들 (renderStep 함수 시작 부분에서 정의)
+    // 시급제 계산을 위한 변수들
     const workStats3 = calcWorkStats(form);
     const hourlyWage = Number(form.hourlyWage) || 0;
     const allowances = Number(form.allowances) || 0;
+    const basePay = Number(form.baseSalary) || 0;
     
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
     let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
-    let totalCalculatedSalary = 0; // <-- Always defined
+    let totalCalculatedSalary = 0; // <-- add this line
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
@@ -496,13 +464,745 @@ function getTerminationText(form) {
       
       // 주휴수당 계산 (통일된 규칙)
       monthlyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
-      
       // 시급제 총 임금 계산
       totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
-    } else if (form.salaryType === 'monthly' && form.monthlySalary) {
-      // For monthly salary, define totalCalculatedSalary for consistent referencing
-      // (basic salary + allowances)
-      totalCalculatedSalary = Number(form.monthlySalary) + Number(form.allowances || 0);
+    }
+
+    // 4대보험료 계산
+    // 4대보험료는 실제 총 월 임금(수당 포함) 기준으로 산정
+    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (basePay + allowances) : totalCalculatedSalary;
+    const insurance = calculateInsurance(baseSalaryForInsurance);
+    
+    // 수습기간 임금 계산
+    // 기본급만 감액 적용, 제수당은 그대로 지급
+    const baseSalaryForProbation = form.salaryType === 'monthly' 
+      ? Number(form.monthlySalary) 
+      : Math.round(hourlyWage * monthlyWorkHours);
+    const probationBaseSalary = form.probationPeriod 
+      ? (form.salaryType === 'hourly' 
+          ? calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours) // 시급제: 하한선 함수 적용 (시간 단위)
+          : calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours)) // 월급제: 기존 방식
+      : baseSalaryForProbation;
+    const probationSalary = probationBaseSalary + allowances; // 제수당 추가
+    const probationDiscountRate = Number(form.probationDiscount) / 100;
+    const originalDiscountedSalary = baseSalaryForProbation * (1 - probationDiscountRate) + allowances;
+    const isMinimumApplied = probationBaseSalary > (baseSalaryForProbation * (1 - probationDiscountRate));
+    
+    const baseSalary = form.salaryType === 'monthly' 
+      ? (form.monthlySalary ? Number(form.monthlySalary).toLocaleString() : '[0,000,000]')
+      : (form.hourlyWage ? `${form.hourlyWage.toLocaleString()}원/시간` : '[0,000]원/시간');
+    const allowancesText = form.allowances ? Number(form.allowances).toLocaleString() : '[식대, 교통비, 직책수당 등]';
+    const totalSalary = form.salaryType === 'monthly'
+      ? (form.monthlySalary && form.allowances 
+          ? (Number(form.monthlySalary) + Number(form.allowances)).toLocaleString() 
+          : '[0,000,000]')
+      : (form.salaryType === 'hourly' && hourlyWage > 0 
+          ? `${Math.round(totalCalculatedSalary).toLocaleString()}원 (시급제 계산)`
+          : '[시급제 계산 참조]');
+
+    const workTimeText = form.workTimeType === 'same' 
+      ? `1일 8시간, 1주 40시간 (${form.days.join(', ')}, ${form.commonStart || '09:00'} ~ ${form.commonEnd || '18:00'})`
+      : `요일별 상이 (${form.days.join(', ')})`;
+
+    const breakText = form.workTimeType === 'same'
+      ? `1일 1시간 (근로시간 중 ${form.commonStart || '12:00'} ~ ${form.commonEnd || '13:00'})`
+      : '요일별 상이';
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>표준 근로계약서</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for better readability */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        @media print {
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .contract-container {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+            .contract-container, .contract-content, header {
+                page-break-before: auto !important;
+                page-break-after: auto !important;
+                break-before: auto !important;
+                break-after: auto !important;
+            }
+            /* 인쇄 시 모든 배경색 제거 */
+            * {
+                background-color: transparent !important;
+                color: black !important;
+                box-shadow: none !important;
+            }
+            /* 테이블 스타일 인쇄용 */
+            .contract-table th {
+                background-color: #f8f9fa !important;
+                border: 1px solid #dee2e6 !important;
+            }
+            .contract-table td {
+                border: 1px solid #dee2e6 !important;
+            }
+            /* 노트 박스 인쇄용 */
+            .note {
+                border: 1px solid #ccc !important;
+                background-color: #f8f9fa !important;
+            }
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Styling for the main content area */
+        .contract-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2.5rem;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+        }
+        .contract-title-main {
+            font-size: 1.15rem !important;
+            font-weight: 800;
+            color: #2563eb;
+            margin-bottom: 1.5rem;
+        }
+        .signature-boxes {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 2rem;
+            justify-content: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .sig-box {
+            min-width: 210px;
+            max-width: 260px;
+            width: 100%;
+            padding: 1.2rem 1.2rem;
+            font-size: 1.05rem;
+            flex: 1 1 210px;
+        }
+        @media print {
+            .signature-boxes {
+                gap: 1.5rem !important;
+                max-width: 600px !important;
+            }
+            .sig-box {
+                min-width: 200px !important;
+                max-width: 240px !important;
+                padding: 1rem 1rem !important;
+                font-size: 1rem !important;
+                flex: 1 1 200px !important;
+            }
+        }
+        /* Section title styling */
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b; /* Darker text for titles */
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #cbd5e1; /* Light gray border */
+        }
+        /* Icon styling (using simple shapes/emojis as placeholders for clip art) */
+        .icon {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+        /* Table styling */
+        .contract-table th, .contract-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+        }
+        .contract-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+        .contract-table tr:last-child td {
+            border-bottom: none;
+        }
+        /* Highlighted text for important notes */
+        .note {
+            background-color: #f8f9fa; /* 연한 회색 배경으로 변경 */
+            border-left: 5px solid #6c757d; /* 회색 테두리로 변경 */
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            color: #495057;
+        }
+
+        .contract-table th.col-label,
+        .contract-table td.col-label {
+            width: 200px;
+            min-width: 160px;
+            max-width: 240px;
+            word-break: keep-all;
+            white-space: nowrap;
+            text-align: left;
+        }
+        .contract-table th.col-content,
+        .contract-table td.col-content {
+            width: auto;
+            word-break: break-all;
+            text-align: left;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="contract-container">
+        <header class="text-center mb-10">
+            <h1 class="contract-title-main">
+                표준 근로계약서
+            </h1>
+            <p class="text-lg text-gray-600" style="font-size: 1.35rem; color: #111; font-weight: 500;">
+                근로기준법을 준수하며, 상호 신뢰와 존중을 바탕으로 합니다.
+            </p>
+
+        </header>
+
+        <div class="bg-gray-50 border-l-4 border-gray-400 p-4 mb-6 rounded">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-gray-800">■ 2025년 최신 법적 정보</h3>
+                    <div class="mt-2 text-sm text-gray-700">
+                        <p>• 최저시급: ${LEGAL_INFO.MIN_WAGE.toLocaleString()}원/시간</p>
+                        <p>• 최저월급: ${LEGAL_INFO.MIN_MONTHLY.toLocaleString()}원 (209시간 기준)</p>
+                        <p>• 4대보험료: 국민연금 4.5%, 건강보험 3.54%, 장기요양보험 0.46%, 고용보험 0.9%, 산재보험</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제1조 (계약의 목적)
+            </h2>
+            <p class="text-gray-700 leading-relaxed">
+                본 계약은 ${form.storeName || '[회사명]'} (이하 "갑"이라 한다)과 ${form.name || '[근로자명]'} (이하 "을"이라 한다) 간에 근로기준법 및 기타 관련 법규에 의거하여 근로 조건을 명확히 하고, 상호 간의 권리와 의무를 성실히 이행함을 목적으로 한다.
+            </p>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 계약의 기본 원칙</p>
+                <p>근로계약은 근로기준법 제2조에 따라 근로자와 사용자 간에 근로조건을 정하는 계약입니다. 본 계약은 법이 정한 최저 기준을 준수하며, 근로기준법에 미달하는 근로조건은 무효가 되고 그 부분은 근로기준법에 따릅니다 (근로기준법 제6조).</p>
+            </div>
+        </section>
+
+        {/* Parties Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제2조 (당사자)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>갑 (사용자)</strong></td>
+                            <td>
+                                <p><strong>회사명:</strong> ${form.storeName || '[회사명]'}</p>
+                                <p><strong>대표자:</strong> ${form.owner || '[대표자명]'}</p>
+                                <p><strong>주소:</strong> ${form.address || '[회사 주소]'} ${form.addressDetail || ''}</p>
+                                <p><strong>연락처:</strong> ${form.storeContact || '[회사 연락처]'}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>을 (근로자)</strong></td>
+                            <td>
+                                <p><strong>성명:</strong> ${form.name || '[근로자명]'}</p>
+                                <p><strong>생년월일:</strong> ${form.birth || '[YYYY년 MM월 DD일]'}</p>
+                                <p><strong>주소:</strong> ${form.workerAddress || '[근로자 주소]'} ${form.workerAddressDetail || ''}</p>
+                                <p><strong>연락처:</strong> ${form.contact || '[근로자 연락처]'}</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 당사자 정보의 중요성</p>
+                <p>사용자와 근로자의 정확한 정보는 계약의 유효성을 확인하고, 향후 발생할 수 있는 법적 분쟁 시 당사자를 명확히 하는 데 필수적입니다. 특히 근로자의 개인정보는 「개인정보 보호법」에 따라 안전하게 관리되어야 합니다.</p>
+            </div>
+        </section>
+
+        {/* Employment Period Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제3조 (근로계약 기간)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="col-label rounded-tl-lg">구분</th>
+                            <th class="col-content">내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="col-label"><strong>계약 시작일</strong></td>
+                            <td class="col-content">${form.periodStart || '[YYYY년 MM월 DD일]'}</td>
+                        </tr>
+                        <tr>
+                            <td class="col-label"><strong>계약 종료일</strong></td>
+                            <td class="col-content">${form.periodEnd || '기간의 정함이 없음'}</td>
+                        </tr>
+                        <tr>
+                            <td class="col-label"><strong>수습 기간</strong></td>
+                            <td class="col-content">${form.probationPeriod || '없음'}</td>
+                        </tr>
+                        ${form.probationPeriod ? `
+                        <tr>
+                            <td class="col-label"><strong>수습기간 만료 후</strong></td>
+                            <td class="col-content">수습기간 중 업무 능력 및 태도를 평가하며, 평가 결과에 따라 본 채용 여부가 결정됩니다. 수습 종료 후 1개월 이내에 별도 통지가 없으면 정식 채용된 것으로 간주합니다.</td>
+                        </tr>
+                        ` : ''}
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 근로계약 기간 및 수습</p>
+                <p>근로계약은 기간을 정할 수도 있고(기간제 근로), 기간을 정하지 않을 수도 있습니다(정규직). 기간제 근로계약은 원칙적으로 2년을 초과할 수 없으며, 2년을 초과하여 사용하는 경우 기간의 정함이 없는 근로자로 간주됩니다 (기간제법 제4조).</p>
+                <p>수습 기간은 근로자의 업무 적응 및 능력 평가를 위한 기간으로, 근로기준법 제35조 및 동법 시행령 제3조에 따라 3개월 이내의 수습 근로자에 대해서는 해고예고 규정이 적용되지 않을 수 있으며, 최저임금의 90% 이상을 지급할 수 있습니다.</p>
+            </div>
+        </section>
+
+        {/* Work Location & Job Description Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제4조 (근무 장소 및 업무 내용)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>근무 장소</strong></td>
+                            <td>${form.workLocation || form.address || '[회사 주소]'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>업무 내용</strong></td>
+                            <td>${form.jobDesc || '[담당 업무 상세 기재]'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>직위/직책</strong></td>
+                            <td>${form.position || '[직위/직책]'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 근무 장소 및 업무의 명확화</p>
+                <p>근무 장소와 업무 내용은 근로계약의 중요한 요소입니다. 이는 근로자의 권리 보호뿐만 아니라, 사용자의 인사권 행사 범위에도 영향을 미칩니다. 업무 내용이 포괄적일 경우 향후 업무 지시 범위에 대한 분쟁이 발생할 수 있으므로 최대한 구체적으로 명시하는 것이 좋습니다.</p>
+            </div>
+        </section>
+
+        {/* Working Hours & Rest Hours Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제5조 (근로시간 및 휴게시간)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>소정 근로시간</strong></td>
+                            <td>${workTimeText}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>휴게 시간</strong></td>
+                            <td>${breakText} (근로시간 중 근로자와 협의하여 부여)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>연장/야간/휴일 근로</strong></td>
+                            <td>갑의 지시 또는 을의 동의 하에 가능하며, 근로기준법에 따라 가산수당 지급 (연장근로는 주 12시간을 한도로 함)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 근로시간 및 가산수당</p>
+                <p>근로기준법 제50조에 따라 1주간의 근로시간은 40시간을, 1일의 근로시간은 8시간을 초과할 수 없습니다. 휴게시간은 근로시간 4시간에 30분 이상, 8시간에 1시간 이상을 부여해야 하며 (근로기준법 제54조), 자유롭게 이용할 수 있어야 합니다.</p>
+                <p>연장근로(1주 12시간 한도), 야간근로(오후 10시부터 오전 6시까지), 휴일근로에 대해서는 통상임금의 50% 이상을 가산하여 지급해야 합니다 (근로기준법 제56조). 주 52시간 근무제는 연장근로를 포함한 총 근로시간을 의미합니다.</p>
+            </div>
+        </section>
+
+        {/* Holidays & Leaves Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제6조 (휴일 및 휴가)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>주휴일</strong></td>
+                            <td>매주 일요일 (주 1회 유급 휴일)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>법정 공휴일</strong></td>
+                            <td>「관공서의 공휴일에 관한 규정」에 따른 유급 휴일</td>
+                        </tr>
+                        <tr>
+                            <td><strong>연차 유급 휴가</strong></td>
+                            <td>근로기준법에 따라 부여 (입사 1년 미만 시 1개월 개근 시 1일, 1년 이상 시 15일 등)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>기타 휴가</strong></td>
+                            <td>경조사 휴가 등 회사의 취업규칙에 따름</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 휴일 및 연차 유급 휴가</p>
+                <p>주휴일은 1주간 소정근로일을 개근한 근로자에게 주어지는 유급 휴일입니다 (근로기준법 제55조). 법정 공휴일은 2022년부터 모든 사업장에 유급 휴일로 적용됩니다.</p>
+                <p>연차 유급 휴가는 근로기준법 제60조에 따라 1년간 80% 이상 출근한 근로자에게 15일이 부여되며, 3년 이상 계속 근로 시 2년마다 1일씩 가산됩니다. 1년 미만 근로자 또는 1년간 80% 미만 출근한 근로자에게는 1개월 개근 시 1일의 유급휴가가 부여됩니다. 사용자는 근로자의 연차 사용을 촉진할 의무가 있습니다.</p>
+            </div>
+        </section>
+
+        {/* Wages Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제7조 (임금)
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">구분</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>월 기본급</strong></td>
+                            <td>${form.salaryType === 'hourly' ? (form.hourlyWage ? `${Math.round(hourlyWage * (workStats3.totalMonth / 60)).toLocaleString()}원 (월 소정근로시간 ${Math.round(workStats3.totalMonth / 60)}시간 × 시급 ${Number(form.hourlyWage).toLocaleString()}원)` : '[0,000]원/시간') : baseSalary + '원'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>제수당</strong></td>
+                            <td>${allowancesText}원 (식대, 교통비, 복리후생비)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>총 월 임금</strong></td>
+                            <td>${totalSalary}원</td>
+                        </tr>
+                        ${form.salaryType === 'hourly' && hourlyWage > 0 ? `
+                        <tr>
+                            <td><strong>시급제 계산 내역</strong></td>
+                            <td>
+                                <p>• 기본급: ${hourlyWage.toLocaleString()}원 × ${Math.round(workStats3.totalMonth / 60)}시간 = ${Math.round(calculatedMonthlySalary).toLocaleString()}원</p>
+                                <p>• 연장수당: ${hourlyWage.toLocaleString()}원 × 0.5 × ${Math.round(workStats3.over / 60)}시간 = ${Math.round(overtimePay).toLocaleString()}원</p>
+                                <p>• 야간수당: ${hourlyWage.toLocaleString()}원 × 0.5 × ${Math.round(workStats3.night / 60)}시간 = ${Math.round(nightPay).toLocaleString()}원</p>
+                                <p>• 주휴수당: ${hourlyWage.toLocaleString()}원 × ${(workStats3.totalWeek / 60) >= 40 ? '8시간' : `${((workStats3.totalWeek / 60) / 40 * 8).toFixed(1)}시간`} × 4.345주 = ${Math.round(monthlyHolidayPay).toLocaleString()}원</p>
+                                <p>• 제수당: ${allowancesText}원</p>
+                            </td>
+                        </tr>
+                        ` : ''}
+                        <tr>
+                            <td><strong>임금 지급일</strong></td>
+                            <td>${form.payday || '매월 25일'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>지급 방법</strong></td>
+                            <td>${form.paymentMethod || '을의 지정 계좌로 입금'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>임금 계산 기간</strong></td>
+                            <td>매월 1일부터 말일까지</td>
+                        </tr>
+                        ${form.probationPeriod ? `
+                        <tr style="background-color: #f8f9fa;">
+                            <td><strong>수습기간 임금</strong></td>
+                            <td>
+                                <div style="color: #495057; font-size: 14px;">
+                                    <p><strong>수습기간:</strong> ${form.probationPeriod}</p>
+                                    <p><strong>정상 임금:</strong> ${(baseSalaryForProbation + allowances).toLocaleString()}원</p>
+                                    <p><strong>수습기간 임금:</strong> ${probationSalary.toLocaleString()}원</p>
+                                    ${isMinimumApplied ? 
+                                        `<p style="color: #dc2626; font-weight: bold;">최저임금 90% 보장으로 인해 ${form.probationDiscount}% 감액이 적용되지 않음</p>` : 
+                                        `<p><strong>감액률:</strong> ${form.probationDiscount}%</p>`
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        ` : ''}
+                    </tbody>
+                </table>
+            </div>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 임금 지급의 원칙</p>
+                <p>임금은 근로기준법 제43조에 따라 매월 1회 이상 일정한 날짜에 통화로 직접 근로자에게 그 전액을 지급해야 합니다. 임금은 최저임금법에 따른 최저임금 이상이어야 하며, 사용자는 임금명세서를 근로자에게 교부해야 할 의무가 있습니다 (근로기준법 제48조).</p>
+                <p>법정 수당(연장, 야간, 휴일근로수당, 주휴수당 등)은 기본급과 별도로 가산하여 지급됩니다.</p>
+                <p><strong>2025년 최저임금:</strong> 시급 ${LEGAL_INFO.MIN_WAGE.toLocaleString()}원, 월급 ${LEGAL_INFO.MIN_MONTHLY.toLocaleString()}원 (209시간 기준)</p>
+                
+                ${form.probationPeriod ? `
+                <div class="mt-4 p-4 bg-gray-50 border-l-4 border-gray-400 rounded">
+                    <p class="font-semibold mb-2 text-gray-800">■ 수습기간 임금 안내</p>
+                    <p class="text-gray-700 text-sm mb-2"><strong>수습기간:</strong> ${form.probationPeriod}</p>
+                    <p class="text-gray-700 text-sm mb-2"><strong>수습기간 임금:</strong> ${probationSalary.toLocaleString()}원 (정상 임금: ${(baseSalaryForProbation + allowances).toLocaleString()}원)</p>
+                    <p class="text-gray-700 text-sm mb-2">• 수습기간 중에는 최저임금의 90% 이상을 지급할 수 있습니다 (근로기준법 제35조)</p>
+                                        <p class="text-gray-700 text-sm mb-2">• 단, 1년 이상 계속 근로하는 근로자에 대해서만 적용됩니다</p>
+                    ${isMinimumApplied ? 
+                        `<p class="text-gray-700 text-sm" style="color: #dc2626; font-weight: bold;">• 최저임금 90% 보장으로 인해 ${form.probationDiscount}% 감액이 적용되지 않았습니다</p>` : 
+                        `<p class="text-gray-700 text-sm">• 적용된 감액률: ${form.probationDiscount}%</p>`
+                    }
+                </div>
+                ` : ''}
+            </div>
+        </section>
+
+        {/* Social Insurance Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제8조 (사회보험)
+            </h2>
+            <p class="text-gray-700 leading-relaxed">
+                갑과 을은 근로기준법 및 관련 법령에 따라 4대 사회보험 (국민연금, 건강보험, 고용보험, 산재보험)에 가입하며, 보험료는 관계 법령에 따라 갑과 을이 각각 부담한다.
+            </p>
+            
+            {/* 4대보험료 상세 정보 */}
+            <div class="mt-6 overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
+                    <thead>
+                        <tr>
+                            <th class="rounded-tl-lg">4대보험료 정보 (2025년 기준)</th>
+                            <th>근로자 부담</th>
+                            <th>사업주 부담</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>국민연금 (4.5%)</strong></td>
+                            <td>${Math.round(insurance.nationalPension/2).toLocaleString()}원</td>
+                            <td>${Math.round(insurance.nationalPension/2).toLocaleString()}원</td>
+                        </tr>
+                        <tr>
+                            <td><strong>건강보험 (3.545%)</strong></td>
+                            <td>${Math.round(insurance.healthInsurance/2).toLocaleString()}원</td>
+                            <td>${Math.round(insurance.healthInsurance/2).toLocaleString()}원</td>
+                        </tr>
+                        <tr>
+                            <td><strong>장기요양보험 (0.4591%)</strong></td>
+                            <td>${Math.round(insurance.longTermCare/2).toLocaleString()}원</td>
+                            <td>${Math.round(insurance.longTermCare/2).toLocaleString()}원</td>
+                        </tr>
+                        <tr>
+                            <td><strong>고용보험 (0.9%)</strong></td>
+                            <td>${Math.round(insurance.employmentInsurance/2).toLocaleString()}원</td>
+                            <td>${Math.round(insurance.employmentInsurance/2).toLocaleString()}원</td>
+                        </tr>
+                        <tr>
+                            <td><strong>산재보험 (1.47%)</strong></td>
+                            <td>0원</td>
+                            <td>${Math.round(insurance.industrialAccident).toLocaleString()}원</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td><strong>총 보험료</strong></td>
+                            <td><strong>${Math.round(insurance.total - insurance.industrialAccident).toLocaleString()}원</strong></td>
+                            <td><strong>${Math.round(insurance.total).toLocaleString()}원</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 4대 사회보험</p>
+                <p>4대 사회보험은 근로자의 생활 안정과 복지 증진을 위한 필수적인 제도입니다. 국민연금, 건강보험, 고용보험은 근로자와 사용자가 보험료를 분담하며, 산재보험은 전액 사용자가 부담합니다. 각 보험의 가입 및 보험료 납부는 법적 의무 사항입니다.</p>
+                <p><strong>2025년 4대보험료 요율:</strong> 국민연금 4.5%, 건강보험 3.545%, 장기요양보험 0.4591%, 고용보험 0.9%, 산재보험 업종별(평균 1.47%)</p>
+            </div>
+        </section>
+
+        {/* Termination of Employment Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제9조 (계약 해지)
+            </h2>
+            <p class="text-gray-700 leading-relaxed">
+                본 계약은 다음 각 호의 사유 발생 시 해지될 수 있다.
+            </p>
+            <ul class="list-disc list-inside ml-4 text-gray-700">
+                <li>${getTerminationText(form)}</li>
+                <li>갑 또는 을이 본 계약 내용을 위반한 경우</li>
+                <li>근로기준법 및 기타 관련 법령에 의거한 해고 또는 사직 사유가 발생한 경우</li>
+                <li>갑의 사업 폐지, 경영상 필요 등 정당한 사유가 있는 경우 (30일 전 통지)</li>
+                <li>갑 또는 을이 중대한 위반행위를 한 경우</li>
+                <li>을의 사직 의사가 있는 경우, 원활한 업무 인수인계 위해 퇴직 예정 30일 전에 사용자에게 주시면 감사하겠습니다.</li> 
+            </ul>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 유의사항: 계약 해지 및 해고</p>
+                <p>사용자는 근로자를 정당한 이유 없이 해고할 수 없습니다 (근로기준법 제23조). 해고 시에는 적어도 30일 전에 예고해야 하며, 30일 전에 예고하지 아니하였을 때에는 30일분 이상의 통상임금을 지급해야 합니다 (해고예고수당, 근로기준법 제26조).</p>
+                <p>근로자가 퇴직할 경우에도 회사에 충분한 인수인계 기간을 제공하기 위해 사직 의사를 미리 통보하는 것이 바람직합니다. 퇴직금은 1년 이상 계속 근로한 근로자에게 지급됩니다 (근로자퇴직급여 보장법 제8조).</p>
+            </div>
+        </section>
+
+        {/* Other Conditions Section */}
+        <section class="mb-8">
+            <h2 class="section-title">
+                <span class="icon">■</span> 제10조 (기타 사항)
+            </h2>
+            <ul class="list-disc list-inside ml-4 text-gray-700">
+                <li>본 계약서에 명시되지 않은 사항은 근로기준법 및 회사의 취업규칙에 따른다.</li>
+                <li>을은 회사의 영업 비밀 및 기밀 사항을 외부에 누설하지 아니하며, 퇴직 후에도 이를 준수한다.</li>
+                <li>본 계약은 ${form.contractCopies || 2}부를 작성하여 갑과 을이 각각 1부씩 보관한다.</li>
+            </ul>
+            <div class="note mt-6">
+                <p class="font-semibold mb-2">■ 중요 안내: 취업규칙 및 비밀유지 의무</p>
+                <p>취업규칙은 근로기준법 제93조에 따라 상시 10명 이상의 근로자를 사용하는 사용자가 작성하여 고용노동부장관에게 신고해야 하는 규칙으로, 근로조건에 대한 세부적인 사항을 정합니다. 근로계약서에 명시되지 않은 사항은 취업규칙을 따릅니다.</p>
+                <p>영업 비밀 및 기밀 유지 의무는 근로자의 중요한 의무 중 하나입니다. 이는 「부정경쟁방지 및 영업비밀보호에 관한 법률」에 의해 보호되며, 위반 시 법적 책임을 질 수 있습니다.</p>
+            </div>
+        </section>
+
+        {/* Signature Section */}
+        <section class="mt-12 text-center">
+            <h2 class="section-title justify-center">
+                <span class="icon">■</span> 계약 당사자 서명
+            </h2>
+            <p class="text-gray-600 mb-8">
+                본 계약의 내용을 충분히 이해하고 동의하며, 상호 성실히 이행할 것을 약속합니다.
+            </p>
+
+            <div class="flex flex-col md:flex-row justify-around items-center space-y-8 md:space-y-0 md:space-x-12">
+                <div class="w-full md:w-1/2 p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+                    <p class="text-xl font-bold text-blue-700 mb-4">갑 (사용자)</p>
+                    <p class="text-lg text-gray-800"><strong>회사명:</strong> ${form.storeName || '[회사명]'}</p>
+                    <p class="text-lg text-gray-800 mb-6"><strong>대표자:</strong> ${form.owner || '[대표자명]'} (인)</p>
+                    <div class="border-t-2 border-dashed border-gray-300 pt-4 text-gray-500 text-sm">
+                        서명 또는 날인
+                    </div>
+                </div>
+
+                <div class="w-full md:w-1/2 p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+                    <p class="text-xl font-bold text-green-700 mb-4">을 (근로자)</p>
+                    <p class="text-lg text-gray-800"><strong>성명:</strong> ${form.name || '[근로자명]'}</p>
+                    <p class="text-lg text-gray-800"><strong>생년월일:</strong> ${form.birth || '[YYYY년 MM월 DD일]'}</p>
+                    <p class="text-lg text-gray-800 mb-6"><strong>연락처:</strong> ${form.contact || '[휴대폰 번호]'}</p>
+                    <div class="border-t-2 border-dashed border-gray-300 pt-4 text-gray-500 text-sm">
+                        서명 또는 날인
+                    </div>
+                </div>
+            </div>
+
+            <p class="mt-12 text-gray-500 text-sm">
+                계약 체결일: ${contractDate}
+            </p>
+        </section>
+
+        {/* Footer / Legal Disclaimer */}
+        <footer class="mt-16 text-center text-gray-500 text-xs">
+            <p>본 계약서는 근로기준법을 바탕으로 작성되었고, 명시되지 않은 부분은 법적 기준을 따릅니다.</p>
+        </footer>
+    </div>
+
+    {/* Print Button */}
+    <div class="no-print fixed bottom-4 right-4">
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-semibold transition-colors">
+            인쇄하기
+        </button>
+    </div>
+</body>
+</html>`;
+
+    // 파일명 생성 (근로자명_날짜_시간)
+    const workerName = form.name || '근로자';
+    const today = new Date();
+    const dateStr = today.getFullYear().toString().slice(-2) + 
+                   String(today.getMonth() + 1).padStart(2, '0') + 
+                   String(today.getDate()).padStart(2, '0');
+    const timeStr = String(today.getHours()).padStart(2, '0') + 
+                   String(today.getMinutes()).padStart(2, '0');
+    const fileName = `근로계약서_${workerName}_${dateStr}_${timeStr}.html`;
+
+    // HTML 파일을 Blob으로 생성하고 다운로드
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    // 다운로드 후 새 창에서 바로 열기
+    window.open(url, '_blank');
+    URL.revokeObjectURL(url);
+  };
+
+  // 각 단계별 입력 폼
+  const renderStep = () => {
+    // 시급제 계산을 위한 변수들 (renderStep 함수 시작 부분에서 정의)
+    const workStats3 = calcWorkStats(form);
+    const hourlyWage = Number(form.hourlyWage) || 0;
+    const allowances = Number(form.allowances) || 0;
+    
+    // 시급제 계산
+    let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
+    let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
+    
+    if (form.salaryType === 'hourly' && hourlyWage > 0) {
+      monthlyWorkMinutes = workStats3.totalMonth;
+      monthlyWorkHours = monthlyWorkMinutes / 60;
+      const weeklyWorkHours = workStats3.totalWeek;
+      
+      calculatedMonthlySalary = hourlyWage * monthlyWorkHours;
+      overtimeHours = workStats3.over;
+      overtimePay = hourlyWage * 0.5 * (overtimeHours / 60);
+      nightHours = workStats3.night;
+      nightPay = hourlyWage * 0.5 * (nightHours / 60);
+      
+      // 주휴수당 계산 (통일된 규칙)
+      monthlyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
     }
     
     // 수습기간 임금 계산 (모든 단계에서 사용 가능하도록)
