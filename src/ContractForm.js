@@ -432,6 +432,16 @@ function getTerminationText(form) {
     }
   };
 
+  // 카카오 주소 API 스크립트 동적 로드
+  React.useEffect(() => {
+    if (!window.daum) {
+      const script = document.createElement('script');
+      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
   const handleSavePDF = async () => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 

@@ -40,16 +40,6 @@ function ContractPreview() {
     return timeStrToMinutes(t);
   }
 
-  // 소정 근로시간에 해당하는 종료 시간 계산
-  function getEndTimeForStandardHours(startTime, standardHours) {
-    if (!startTime) return '18:00';
-    const startMinutes = getMinutes(startTime);
-    const endMinutes = startMinutes + (standardHours * 60);
-    const endHours = Math.floor(endMinutes / 60);
-    const endMins = endMinutes % 60;
-    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
-  }
-
   function calcWorkStats(form) {
     let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
     const dayStats = {};
