@@ -111,7 +111,7 @@ function ContractPreview() {
       const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60;
       // 주간/월간 근로시간(시간 단위)
       const weeklyWorkHours = workStats3.totalWeek / 60;
-      monthlyWorkHours = workStats3.totalMonth / 60;
+      const monthlyWorkHours = workStats3.totalMonth / 60;
       // 소정근로시간과 연장근로시간 구분
       const standardWeeklyHours = Math.min(40, weeklyWorkHours);
       const overtimeWeeklyHours = Math.max(0, weeklyWorkHours - 40);
