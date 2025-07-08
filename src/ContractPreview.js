@@ -129,6 +129,17 @@ function ContractPreview() {
       totalCalculatedSalary = Number(form.monthlySalary) + weeklyHolidayPayMonthly + allowances;
     }
 
+    // 주휴수당 계산 (월급제와 시급제 모두)
+    let weeklyHolidayPay = 0;
+    if (form.salaryType === 'monthly' && form.monthlySalary) {
+      const weeklyWorkHours = workStats3.totalWeek / 60;
+      const monthlyWorkHours = workStats3.totalMonth / 60;
+      const hourlyWage = Number(form.monthlySalary) / monthlyWorkHours;
+      weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
+    } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
+      weeklyHolidayPay = monthlyHolidayPay;
+    }
+    
     // 4대보험료 계산
     const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : totalCalculatedSalary;
     const insurance = calculateInsurance(baseSalaryForInsurance);
@@ -157,17 +168,6 @@ function ContractPreview() {
       : (form.hourlyWage ? `${Math.round(calculatedMonthlySalary).toLocaleString()}원` : '[0,000]원');
     
     const allowancesText = form.allowances ? Number(form.allowances).toLocaleString() : '[식대, 교통비, 직책수당 등]';
-    
-    // 주휴수당 계산 (월급제와 시급제 모두)
-    let weeklyHolidayPay = 0;
-    if (form.salaryType === 'monthly' && form.monthlySalary) {
-      const weeklyWorkHours = workStats3.totalWeek / 60;
-      const monthlyWorkHours = workStats3.totalMonth / 60;
-      const hourlyWage = Number(form.monthlySalary) / monthlyWorkHours;
-      weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
-    } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
-      weeklyHolidayPay = monthlyHolidayPay;
-    }
     
     // 총 월 임금 계산 (기본급 + 주휴수당 + 제수당)
     const totalSalary = form.salaryType === 'monthly'
