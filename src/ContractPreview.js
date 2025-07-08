@@ -127,7 +127,7 @@ function ContractPreview() {
       // 주휴수당 (통일된 규칙)
       monthlyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
       // 시급제 총 임금 계산
-      totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
+      let totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
     }
 
     // 4대보험료 계산
