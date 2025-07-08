@@ -131,7 +131,7 @@ function ContractPreview() {
     }
 
     // 4대보험료 계산
-    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : totalCalculatedSalary;
+    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : (form.salaryType === 'hourly' ? totalCalculatedSalary : 0);
     const insurance = calculateInsurance(baseSalaryForInsurance);
     
     // 수습기간 임금 계산 (시급제: 소정근로시간만 감액)
@@ -149,7 +149,7 @@ function ContractPreview() {
       const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
       probationSalary = probationBaseSalary + calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours) + allowances;
     } else {
-      probationSalary = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + weeklyHolidayPay + allowances) : totalCalculatedSalary;
+      probationSalary = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + weeklyHolidayPay + allowances) : (form.salaryType === 'hourly' ? totalCalculatedSalary : 0);
     }
     
     // 월급제: 기본급은 입력된 월급만, 시급제: 소정근로시간 × 시급
