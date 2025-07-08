@@ -16,68 +16,7 @@ function ContractPreview() {
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState(null);
 
-  useEffect(() => {
-    // URL 파라미터에서 폼 데이터 가져오기
-    const params = new URLSearchParams(location.search);
-    const formData = params.get('formData');
-    
-    if (formData) {
-      try {
-        const parsedForm = JSON.parse(decodeURIComponent(formData));
-        setForm(parsedForm);
-        generateContractHtml(parsedForm);
-      } catch (error) {
-        console.error('폼 데이터 파싱 오류:', error);
-        setIsLoading(false);
-      }
-    } else {
-      setIsLoading(false);
-    }
-  }, [location, generateContractHtml]);
-
-  // 시간 계산 유틸 (공통 함수 사용)
-  function getMinutes(t) {
-    return timeStrToMinutes(t);
-  }
-
-  function calcWorkStats(form) {
-    let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
-    const dayStats = {};
-    // 야간근로 시간대 정의 (22:00~06:00)
-    form.days.forEach(day => {
-      let s, e, br;
-      if (form.workTimeType === 'same') {
-        s = getMinutes(form.commonStart);
-        e = getMinutes(form.commonEnd);
-        br = Number(form.commonBreak) || 0;
-      } else {
-        s = getMinutes(form.dayTimes[day]?.start);
-        e = getMinutes(form.dayTimes[day]?.end);
-        br = Number(form.dayTimes[day]?.break) || 0;
-      }
-      if ((!s && !e) || e === s) { dayStats[day] = { work: 0, night: 0, over: 0 }; return; }
-      let work = e > s ? e - s : (e + 24 * 60) - s;
-      work = Math.max(0, work - br); // 휴게시간 차감
-      let nightMin = 0;
-      // 야간근로 계산 (22:00~06:00)
-      const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60;
-      for (let t = s; t < s + work + br; t += 10) {
-        const cur = t % (24 * 60);
-        if (cur >= NIGHT_START || cur < NIGHT_END) nightMin += 10;
-      }
-      // 연장근로(1일 8시간 초과)
-      let overMin = work > 480 ? work - 480 : 0;
-      dayStats[day] = { work, night: nightMin, over: overMin };
-      totalWeek += work;
-      night += nightMin;
-      over += overMin;
-    });
-    totalMonth = Math.round(totalWeek * 4.345); // 월평균 주수
-    return { dayStats, totalWeek, totalMonth, night, over };
-  }
-
-
-
+  // 1. Move generateContractHtml above useEffect
   const generateContractHtml = (form) => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 
@@ -944,6 +883,66 @@ function ContractPreview() {
     setContractHtml(htmlContent);
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    // URL 파라미터에서 폼 데이터 가져오기
+    const params = new URLSearchParams(location.search);
+    const formData = params.get('formData');
+    
+    if (formData) {
+      try {
+        const parsedForm = JSON.parse(decodeURIComponent(formData));
+        setForm(parsedForm);
+        generateContractHtml(parsedForm);
+      } catch (error) {
+        console.error('폼 데이터 파싱 오류:', error);
+        setIsLoading(false);
+      }
+    } else {
+      setIsLoading(false);
+    }
+  }, [location]);
+
+  // 시간 계산 유틸 (공통 함수 사용)
+  function getMinutes(t) {
+    return timeStrToMinutes(t);
+  }
+
+  function calcWorkStats(form) {
+    let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
+    const dayStats = {};
+    // 야간근로 시간대 정의 (22:00~06:00)
+    form.days.forEach(day => {
+      let s, e, br;
+      if (form.workTimeType === 'same') {
+        s = getMinutes(form.commonStart);
+        e = getMinutes(form.commonEnd);
+        br = Number(form.commonBreak) || 0;
+      } else {
+        s = getMinutes(form.dayTimes[day]?.start);
+        e = getMinutes(form.dayTimes[day]?.end);
+        br = Number(form.dayTimes[day]?.break) || 0;
+      }
+      if ((!s && !e) || e === s) { dayStats[day] = { work: 0, night: 0, over: 0 }; return; }
+      let work = e > s ? e - s : (e + 24 * 60) - s;
+      work = Math.max(0, work - br); // 휴게시간 차감
+      let nightMin = 0;
+      // 야간근로 계산 (22:00~06:00)
+      const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60;
+      for (let t = s; t < s + work + br; t += 10) {
+        const cur = t % (24 * 60);
+        if (cur >= NIGHT_START || cur < NIGHT_END) nightMin += 10;
+      }
+      // 연장근로(1일 8시간 초과)
+      let overMin = work > 480 ? work - 480 : 0;
+      dayStats[day] = { work, night: nightMin, over: overMin };
+      totalWeek += work;
+      night += nightMin;
+      over += overMin;
+    });
+    totalMonth = Math.round(totalWeek * 4.345); // 월평균 주수
+    return { dayStats, totalWeek, totalMonth, night, over };
+  }
 
   const handlePrint = () => {
     window.print();
