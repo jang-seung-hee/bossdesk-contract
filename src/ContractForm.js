@@ -470,7 +470,7 @@ function getTerminationText(form) {
 
     // 4대보험료 계산
     // 4대보험료는 실제 총 월 임금(수당 포함) 기준으로 산정
-    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (basePay + allowances) : 0;
+    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (basePay + allowances) : totalCalculatedSalary;
     const insurance = calculateInsurance(baseSalaryForInsurance);
     
     // 수습기간 임금 계산
