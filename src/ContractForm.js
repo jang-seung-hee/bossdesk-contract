@@ -449,6 +449,7 @@ function getTerminationText(form) {
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
     let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
+    let totalCalculatedSalary = 0; // <-- Always defined
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
@@ -466,6 +467,10 @@ function getTerminationText(form) {
       
       // 시급제 총 임금 계산
       totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
+    } else if (form.salaryType === 'monthly' && form.monthlySalary) {
+      // For monthly salary, define totalCalculatedSalary for consistent referencing
+      // (basic salary + allowances)
+      totalCalculatedSalary = Number(form.monthlySalary) + Number(form.allowances || 0);
     }
 
     // 4대보험료 계산
@@ -1189,6 +1194,7 @@ function getTerminationText(form) {
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
     let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
+    let totalCalculatedSalary = 0; // <-- Always defined
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
@@ -1206,6 +1212,10 @@ function getTerminationText(form) {
       
       // 시급제 총 임금 계산
       totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
+    } else if (form.salaryType === 'monthly' && form.monthlySalary) {
+      // For monthly salary, define totalCalculatedSalary for consistent referencing
+      // (basic salary + allowances)
+      totalCalculatedSalary = Number(form.monthlySalary) + Number(form.allowances || 0);
     }
     
     // 수습기간 임금 계산 (모든 단계에서 사용 가능하도록)
