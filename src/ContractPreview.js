@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   timeStrToMinutes, 
@@ -16,8 +16,78 @@ function ContractPreview() {
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState(null);
 
-  // 1. Move generateContractHtml above useEffect
-  const generateContractHtml = useCallback((form) => {
+  useEffect(() => {
+    // URL 파라미터에서 폼 데이터 가져오기
+    const params = new URLSearchParams(location.search);
+    const formData = params.get('formData');
+    
+    if (formData) {
+      try {
+        const parsedForm = JSON.parse(decodeURIComponent(formData));
+        setForm(parsedForm);
+        generateContractHtml(parsedForm);
+      } catch (error) {
+        console.error('폼 데이터 파싱 오류:', error);
+        setIsLoading(false);
+      }
+    } else {
+      setIsLoading(false);
+    }
+  }, [location]);
+
+  // 시간 계산 유틸 (공통 함수 사용)
+  function getMinutes(t) {
+    return timeStrToMinutes(t);
+  }
+
+  // 소정 근로시간에 해당하는 종료 시간 계산
+  function getEndTimeForStandardHours(startTime, standardHours) {
+    if (!startTime) return '18:00';
+    const startMinutes = getMinutes(startTime);
+    const endMinutes = startMinutes + (standardHours * 60);
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+  }
+
+  function calcWorkStats(form) {
+    let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
+    const dayStats = {};
+    // 야간근로 시간대 정의 (22:00~06:00)
+    form.days.forEach(day => {
+      let s, e, br;
+      if (form.workTimeType === 'same') {
+        s = getMinutes(form.commonStart);
+        e = getMinutes(form.commonEnd);
+        br = Number(form.commonBreak) || 0;
+      } else {
+        s = getMinutes(form.dayTimes[day]?.start);
+        e = getMinutes(form.dayTimes[day]?.end);
+        br = Number(form.dayTimes[day]?.break) || 0;
+      }
+      if ((!s && !e) || e === s) { dayStats[day] = { work: 0, night: 0, over: 0 }; return; }
+      let work = e > s ? e - s : (e + 24 * 60) - s;
+      work = Math.max(0, work - br); // 휴게시간 차감
+      let nightMin = 0;
+      // 야간근로 계산 (22:00~06:00)
+      for (let t = s; t < s + work + br; t += 10) {
+        const cur = t % (24 * 60);
+        if (cur >= 22 * 60 || cur < 6 * 60) nightMin += 10;
+      }
+      // 연장근로(1일 8시간 초과)
+      let overMin = work > 480 ? work - 480 : 0;
+      dayStats[day] = { work, night: nightMin, over: overMin };
+      totalWeek += work;
+      night += nightMin;
+      over += overMin;
+    });
+    totalMonth = Math.round(totalWeek * 4.345); // 월평균 주수
+    return { dayStats, totalWeek, totalMonth, night, over };
+  }
+
+
+
+  const generateContractHtml = (form) => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 
       year: 'numeric', 
@@ -33,14 +103,12 @@ function ContractPreview() {
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
     let overtimeHours = 0, nightHours = 0, standardMonthlyHours = 0;
-    let totalCalculatedSalary = 0; // <-- Always defined
+    let totalCalculatedSalary = 0; // <-- moved declaration here
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
-      // 야간근로 상수 정의
-      const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60;
       // 주간/월간 근로시간(시간 단위)
       const weeklyWorkHours = workStats3.totalWeek / 60;
-      const monthlyWorkHours = workStats3.totalMonth / 60;
+      const monthlyWorkHours = workStats3.totalMonth / 60; // (실제 사용되는 경우만 남김)
       // 소정근로시간과 연장근로시간 구분
       const standardWeeklyHours = Math.min(40, weeklyWorkHours);
       const overtimeWeeklyHours = Math.max(0, weeklyWorkHours - 40);
@@ -58,27 +126,8 @@ function ContractPreview() {
       monthlyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
       // 시급제 총 임금 계산
       totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
-    } else if (form.salaryType === 'monthly' && form.monthlySalary) {
-      // For monthly salary, define totalCalculatedSalary for consistent referencing
-      // (basic salary + weeklyHolidayPay + allowances)
-      const weeklyWorkHours = workStats3.totalWeek / 60;
-      const monthlyWorkHours = workStats3.totalMonth / 60;
-      const hourlyWageMonthly = Number(form.monthlySalary) / monthlyWorkHours;
-      const weeklyHolidayPayMonthly = calculateWeeklyHolidayPay(hourlyWageMonthly, weeklyWorkHours);
-      totalCalculatedSalary = Number(form.monthlySalary) + weeklyHolidayPayMonthly + allowances;
     }
 
-    // 주휴수당 계산 (월급제와 시급제 모두)
-    let weeklyHolidayPay = 0;
-    if (form.salaryType === 'monthly' && form.monthlySalary) {
-      const weeklyWorkHours = workStats3.totalWeek / 60;
-      const monthlyWorkHours = workStats3.totalMonth / 60;
-      const hourlyWage = Number(form.monthlySalary) / monthlyWorkHours;
-      weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
-    } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
-      weeklyHolidayPay = monthlyHolidayPay;
-    }
-    
     // 4대보험료 계산
     const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : totalCalculatedSalary;
     const insurance = calculateInsurance(baseSalaryForInsurance);
@@ -107,6 +156,17 @@ function ContractPreview() {
       : (form.hourlyWage ? `${Math.round(calculatedMonthlySalary).toLocaleString()}원` : '[0,000]원');
     
     const allowancesText = form.allowances ? Number(form.allowances).toLocaleString() : '[식대, 교통비, 직책수당 등]';
+    
+    // 주휴수당 계산 (월급제와 시급제 모두)
+    let weeklyHolidayPay = 0;
+    if (form.salaryType === 'monthly' && form.monthlySalary) {
+      const weeklyWorkHours = workStats3.totalWeek / 60;
+      const monthlyWorkHours = workStats3.totalMonth / 60;
+      const hourlyWage = Number(form.monthlySalary) / monthlyWorkHours;
+      weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
+    } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
+      weeklyHolidayPay = monthlyHolidayPay;
+    }
     
     // 총 월 임금 계산 (기본급 + 주휴수당 + 제수당)
     const totalSalary = form.salaryType === 'monthly'
@@ -728,7 +788,6 @@ function ContractPreview() {
                                                 const baseSalaryForProbation = Number(form.monthlySalary);
                                                 const monthlyWorkHours = workStats3.totalMonth / 60;
                                                 const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
-                                                const workStats = calcWorkStats(form);
                                                 const weeklyWorkHours = workStats.totalWeek / 60;
                                                 const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
                                                 return `
@@ -882,67 +941,7 @@ function ContractPreview() {
 
     setContractHtml(htmlContent);
     setIsLoading(false);
-  }, [form]);
-
-  useEffect(() => {
-    // URL 파라미터에서 폼 데이터 가져오기
-    const params = new URLSearchParams(location.search);
-    const formData = params.get('formData');
-    
-    if (formData) {
-      try {
-        const parsedForm = JSON.parse(decodeURIComponent(formData));
-        setForm(parsedForm);
-        generateContractHtml(parsedForm);
-      } catch (error) {
-        console.error('폼 데이터 파싱 오류:', error);
-        setIsLoading(false);
-      }
-    } else {
-      setIsLoading(false);
-    }
-  }, [location, generateContractHtml]);
-
-  // 시간 계산 유틸 (공통 함수 사용)
-  function getMinutes(t) {
-    return timeStrToMinutes(t);
-  }
-
-  function calcWorkStats(form) {
-    let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
-    const dayStats = {};
-    // 야간근로 시간대 정의 (22:00~06:00)
-    form.days.forEach(day => {
-      let s, e, br;
-      if (form.workTimeType === 'same') {
-        s = getMinutes(form.commonStart);
-        e = getMinutes(form.commonEnd);
-        br = Number(form.commonBreak) || 0;
-      } else {
-        s = getMinutes(form.dayTimes[day]?.start);
-        e = getMinutes(form.dayTimes[day]?.end);
-        br = Number(form.dayTimes[day]?.break) || 0;
-      }
-      if ((!s && !e) || e === s) { dayStats[day] = { work: 0, night: 0, over: 0 }; return; }
-      let work = e > s ? e - s : (e + 24 * 60) - s;
-      work = Math.max(0, work - br); // 휴게시간 차감
-      let nightMin = 0;
-      // 야간근로 계산 (22:00~06:00)
-      const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60;
-      for (let t = s; t < s + work + br; t += 10) {
-        const cur = t % (24 * 60);
-        if (cur >= NIGHT_START || cur < NIGHT_END) nightMin += 10;
-      }
-      // 연장근로(1일 8시간 초과)
-      let overMin = work > 480 ? work - 480 : 0;
-      dayStats[day] = { work, night: nightMin, over: overMin };
-      totalWeek += work;
-      night += nightMin;
-      over += overMin;
-    });
-    totalMonth = Math.round(totalWeek * 4.345); // 월평균 주수
-    return { dayStats, totalWeek, totalMonth, night, over };
-  }
+  };
 
   const handlePrint = () => {
     window.print();

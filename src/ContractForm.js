@@ -7,7 +7,6 @@ import {
   parseNumberFromCommas,
   LEGAL_INFO,
   calculateProbationSalary,
-  calculateInsurance,
   checkInsuranceEligibility,
   checkWeeklyHolidayEligibility,
   getPracticalBreakMinutes,
@@ -249,29 +248,7 @@ const terminationOptions = [
   }
 ];
 
-// 계약 해지 조건 텍스트 생성 함수
-function getTerminationText(form) {
-  if (!form.terminationTypes || form.terminationTypes.length === 0) {
-    return '계약 해지 조건이 설정되지 않았습니다.';
-  }
-  
-  const selectedOptions = [];
-  
-  form.terminationTypes.forEach(type => {
-    if (type === 'custom') {
-      if (form.termination) {
-        selectedOptions.push(form.termination);
-      }
-    } else {
-      const option = terminationOptions.flatMap(cat => cat.options).find(opt => opt.value === type);
-      if (option) {
-        selectedOptions.push(option.label);
-      }
-    }
-  });
-  
-  return selectedOptions.length > 0 ? selectedOptions.join(', ') : '계약 해지 조건이 설정되지 않았습니다.';
-}
+
 
   // 카카오 주소 API 스크립트 동적 로드
   React.useEffect(() => {
@@ -467,8 +444,7 @@ function getTerminationText(form) {
     // 시급제 계산을 위한 변수들 (renderStep 함수 시작 부분에서 정의)
     const workStats3 = calcWorkStats(form);
     const hourlyWage = Number(form.hourlyWage) || 0;
-    const allowances = Number(form.allowances) || 0;
-    
+        
     // 시급제 계산
 
     let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
@@ -476,13 +452,7 @@ function getTerminationText(form) {
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
       monthlyWorkHours = monthlyWorkMinutes / 60;
-      const weeklyWorkHours = workStats3.totalWeek;
-      
 
-      overtimeHours = workStats3.over;
-      
-      nightHours = workStats3.night;
-      
       
       // 주휴수당 계산 (통일된 규칙)
 
@@ -493,16 +463,9 @@ function getTerminationText(form) {
     const baseSalaryForProbation = form.salaryType === 'monthly' 
       ? Number(form.monthlySalary) 
       : Math.round(hourlyWage * monthlyWorkHours);
-    const probationBaseSalary = form.probationPeriod 
-      ? (form.salaryType === 'hourly' 
-          ? calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours) // 시급제: 하한선 함수 적용 (시간 단위)
-          : calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours)) // 월급제: 기존 방식
-      : baseSalaryForProbation;
-
-    const probationDiscountRate = Number(form.probationDiscount) / 100;
-
-
     
+
+       
     switch (step) {
       case 0: // 사업장 정보
         return (
@@ -1785,17 +1748,15 @@ function MonthlyWageLegalGuide({ form }) {
   if (form.salaryType !== 'monthly' || !form.monthlySalary) {
     return null;
   }
+  const allowances = Number(form.allowances) || 0;
   
   const minimumWage = calculateMinimumMonthlyWage(form);
   const inputWage = Number(form.monthlySalary) || 0;
-  const allowances = Number(form.allowances) || 0;
-  const totalInputWage = inputWage + allowances;
+    const totalInputWage = inputWage + allowances;
   const isCompliant = totalInputWage >= minimumWage.totalMinimumWage;
   // 추가: 월급제 기준 근무 통계 및 시급 계산
   const workStats = calcWorkStats(form);
   const monthlyWorkHours = workStats.totalMonth / 60;
-  // 실제 입력 월급/근무시간으로 시급 환산
-  const hourlyWage = monthlyWorkHours > 0 ? inputWage / monthlyWorkHours : 0;
 
   // [1] 월 총 임금(예상) 계산: 입력 월급(주휴수당 포함) + 제수당만 합산 (주휴수당 중복 X)
   const totalMonthlyWage = inputWage + allowances;
@@ -1963,14 +1924,14 @@ function HourlyWageLegalGuide({ form }) {
   if (form.salaryType !== 'hourly' || !form.hourlyWage) {
     return null;
   }
+  const allowances = Number(form.allowances) || 0;
   
   const workStats = calcWorkStats(form);
   const monthlyWorkHours = workStats.totalMonth / 60; // 분을 시간으로 변환
   const weeklyWorkHours = workStats.totalWeek / 60; // 분을 시간으로 변환
   
   const inputHourlyWage = Number(form.hourlyWage) || 0;
-  const allowances = Number(form.allowances) || 0;
-  const isCompliant = inputHourlyWage >= LEGAL_INFO.MIN_WAGE;
+    const isCompliant = inputHourlyWage >= LEGAL_INFO.MIN_WAGE;
   const difference = inputHourlyWage - LEGAL_INFO.MIN_WAGE;
   
   // 월 예상 임금 계산
