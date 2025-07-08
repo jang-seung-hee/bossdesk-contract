@@ -2,31 +2,13 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './App.css';
+import { getPracticalBreakMinutes, LEGAL_INFO, checkInsuranceEligibility, calculateWeeklyHolidayPay } from './utils/laborRules';
 
-const MIN_WAGE_2025 = 10030; // 2025년 최저시급
-const MIN_MONTHLY_2025 = 2096270; // 2025년 월급제 최저임금(209시간)
 const WEEKS_PER_MONTH = 4.345;
 
 function formatNumber(num) {
   if (!num && num !== 0) return '';
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-// 휴게시간 자동 계산 함수 (수정된 규칙)
-function getBreakMinutes(workMinutes) {
-  if (workMinutes < 4 * 60) {
-    return 0; // 4시간 미만: 휴게시간 없음
-  } else if (workMinutes < 8 * 60) {
-    return 30; // 4시간 이상 ~ 8시간 미만: 30분
-  } else if (workMinutes === 8 * 60) {
-    return 60; // 8시간: 1시간
-  } else if (workMinutes <= 12 * 60) {
-    return 90; // 8시간 초과 ~ 12시간 이하: 1시간 30분
-  } else if (workMinutes <= 16 * 60) {
-    return 120; // 12시간 초과 ~ 16시간 이하: 2시간
-  } else {
-    return 120; // 16시간 초과시에도 최대 2시간
-  }
 }
 
 // 야간근로 계산 (22:00~06:00)
@@ -40,25 +22,13 @@ function calcNightMinutes(start, workMinutes) {
   return night;
 }
 
-// 4대보험 가입 조건 판단 함수
-function checkInsuranceEligibility(weekWorkHours, monthWorkHours) {
-  // 주 15시간 이상 또는 월 60시간 이상 근무 시 4대보험 의무가입
-  const isEligible = weekWorkHours >= 15 || monthWorkHours >= 60;
-  return {
-    isEligible,
-    reason: isEligible 
-      ? `주 ${weekWorkHours}시간/4대보험가입 대상`
-      : `주 ${weekWorkHours}시간/4대보험가입 대상아님`,
-    weekHours: weekWorkHours,
-    monthHours: monthWorkHours
-  };
-}
+
 
 // 예산기반 제안의 근무시간 분배 및 수당 자동계산
 function calcAutoAllowance({ wage, weekDays, dayHours, wageType }) {
   // 1일 근무시간(소수점) → 분 단위
   let workMin = Math.round(dayHours * 60);
-  let breakMin = getBreakMinutes(workMin);
+  let breakMin = getPracticalBreakMinutes(workMin);
   let realWorkMin = Math.max(0, workMin - breakMin);
   // 연장근로(1일 8시간 초과)
   let overMin = realWorkMin > 480 ? realWorkMin - 480 : 0;
@@ -77,11 +47,8 @@ function calcAutoAllowance({ wage, weekDays, dayHours, wageType }) {
   let basePay = wage * (monthWorkMin / 60);
   let overtimePay = wage * 0.5 * (monthOverMin / 60);
   let nightPay = wage * 0.5 * (monthNightMin / 60);
-  // 주휴수당 계산
-  let juhyuPay = 0;
-  if (weekWorkMin / 60 >= 15) {
-    juhyuPay = wage * ((weekWorkMin / 60) / 40) * 8 * 4.345;
-  }
+  // 주휴수당 계산 (통일된 규칙)
+  let juhyuPay = calculateWeeklyHolidayPay(wage, weekWorkMin / 60);
   
   // 총 급여 계산
   let totalPay = basePay + overtimePay + nightPay + juhyuPay;
@@ -124,10 +91,10 @@ function calcAutoAllowance({ wage, weekDays, dayHours, wageType }) {
   };
 }
 
-// 근로기준법 안내문 (중복 제거, 간결화)
+// 근로기준법 안내문 (공통 상수 사용)
 const LABOR_LAW_GUIDE = [
-  { title: '최저시급(2025)', desc: '10,030원' },
-  { title: '최저월급(2025)', desc: '2,096,270원 (209시간 기준)' },
+  { title: '최저시급(2025)', desc: `${LEGAL_INFO.MIN_WAGE.toLocaleString()}원` },
+  { title: '최저월급(2025)', desc: `${LEGAL_INFO.MIN_MONTHLY.toLocaleString()}원 (209시간 기준)` },
   { title: '주휴수당', desc: '1주 15시간 이상 근무 시 1일분 임금 추가 지급' },
   { title: '휴게시간', desc: '4시간 미만: 휴게시간 없음, 4시간 이상~8시간 미만: 30분, 8시간: 1시간, 8시간 초과~12시간: 1시간 30분, 12시간 초과~16시간: 2시간 휴게시간 부여' },
   { title: '연장/야간근로수당', desc: '1일 8시간, 1주 40시간 초과 또는 밤 10시~아침 6시 근무 시 통상임금의 1.5배 이상 지급' },
@@ -352,13 +319,13 @@ function AllowanceCalculator() {
     setError('');
     if (desiredWage) {
       if (wageType === 'hourly' && desiredWage) {
-        if (Number(desiredWage.replace(/,/g, '')) < MIN_WAGE_2025) {
-          setError(`⚠️ 2025년 법정 최저시급(${formatNumber(MIN_WAGE_2025)}원) 미만입니다.`);
+        if (Number(desiredWage.replace(/,/g, '')) < LEGAL_INFO.MIN_WAGE) {
+          setError(`⚠️ 2025년 법정 최저시급(${formatNumber(LEGAL_INFO.MIN_WAGE)}원) 미만입니다.`);
         }
       }
       if (wageType === 'monthly' && desiredWage) {
-        if (Number(desiredWage.replace(/,/g, '')) < MIN_MONTHLY_2025) {
-          setError('⚠️ 2025년 월급제 법정 최저임금(2,096,270원) 미만입니다.');
+        if (Number(desiredWage.replace(/,/g, '')) < LEGAL_INFO.MIN_MONTHLY) {
+          setError(`⚠️ 2025년 월급제 법정 최저임금(${formatNumber(LEGAL_INFO.MIN_MONTHLY)}원) 미만입니다.`);
         }
       }
     }
@@ -411,7 +378,7 @@ function AllowanceCalculator() {
   // 근무시간 자동 제안 계산
   const handleSuggest = () => {
     const budgetNum = Number(budget.replace(/,/g, ''));
-    let wage = desiredWage ? Number(desiredWage.replace(/,/g, '')) : (wageType === 'hourly' ? MIN_WAGE_2025 : MIN_MONTHLY_2025);
+    let wage = desiredWage ? Number(desiredWage.replace(/,/g, '')) : (wageType === 'hourly' ? LEGAL_INFO.MIN_WAGE : LEGAL_INFO.MIN_MONTHLY);
     let info = {};
     if (wageType === 'hourly') {
       // 시급제 근무형태/최적화 분기
@@ -428,7 +395,7 @@ function AllowanceCalculator() {
       // 월급제: 예산 >= 최저임금이면 풀타임(209시간) 가능, 아니면 불가
       info = {
         wage,
-        canFullTime: budgetNum >= MIN_MONTHLY_2025,
+        canFullTime: budgetNum >= LEGAL_INFO.MIN_MONTHLY,
         budgetNum
       };
     }
@@ -463,7 +430,7 @@ function AllowanceCalculator() {
   // 1. Calculate total work hours for hourly wageType
   const totalWeeklyHours = wageType === 'hourly' ? Number(hourlyWorkMode) * Number(dailyHours) : 0;
   const totalMonthlyHours = wageType === 'hourly' ? Math.round(totalWeeklyHours * WEEKS_PER_MONTH) : 0;
-  const minWageBudget = wageType === 'hourly' ? MIN_WAGE_2025 * (budgetType === 'week' ? totalWeeklyHours : totalMonthlyHours) : 0;
+  const minWageBudget = wageType === 'hourly' ? LEGAL_INFO.MIN_WAGE * (budgetType === 'week' ? totalWeeklyHours : totalMonthlyHours) : 0;
   const numericBudget = Number(budget.replace(/,/g, ''));
   const isHourlyBudgetEnough = wageType === 'hourly' && numericBudget >= minWageBudget;
   const isHourlyBudgetTooLow = wageType === 'hourly' && numericBudget > 0 && numericBudget < minWageBudget;
@@ -615,7 +582,7 @@ function AllowanceCalculator() {
                 )}
                 <div className="form-group">
                   <label className="form-label">희망 {wageType === 'hourly' ? '시급' : '월급'}</label>
-                  <input type="text" inputMode="numeric" placeholder={wageType === 'hourly' ? `예: ${formatNumber(MIN_WAGE_2025)}` : '예: 2,200,000'} value={desiredWage} onChange={handleWageChange} className="form-input" maxLength={10} />
+                  <input type="text" inputMode="numeric" placeholder={wageType === 'hourly' ? `예: ${formatNumber(LEGAL_INFO.MIN_WAGE)}` : '예: 2,200,000'} value={desiredWage} onChange={handleWageChange} className="form-input" maxLength={10} />
                   {wageType === 'hourly' && (
                     <div style={{marginTop:8}}>
                       {isHourlyBudgetEnough ? (
@@ -632,7 +599,7 @@ function AllowanceCalculator() {
                                 const weekDays = Number(hourlyWorkMode);
                                 const dayHours = Number(dailyHours);
                                 const workMin = Math.round(dayHours * 60);
-                                const breakMin = getBreakMinutes(workMin);
+                                const breakMin = getPracticalBreakMinutes(workMin);
                                 const realWorkMin = Math.max(0, workMin - breakMin);
                                 
                                 // 주간/월간 실제 근무시간 계산
@@ -653,7 +620,7 @@ function AllowanceCalculator() {
                                   // 4대보험 가입 조건인 경우: 전체 4대보험(11.1241%) + 산재보험료(1.47%) 모두 포함
                                   // 총비용 = (시급 × 총근로시간) × 1.096541 + (시급 × 209) × 0.0147
                                   // 이분법으로 시급을 찾음
-                                  let left = MIN_WAGE_2025, right = 100000, best = MIN_WAGE_2025;
+                                  let left = LEGAL_INFO.MIN_WAGE, right = 100000, best = LEGAL_INFO.MIN_WAGE;
                                   for (let i = 0; i < 30; i++) {
                                     let mid = (left + right) / 2;
                                     let totalCost = (mid * totalPayHours) * 1.096541 + (mid * 209) * 0.0147;
@@ -666,7 +633,7 @@ function AllowanceCalculator() {
                                   }
                                   // 후처리: 실제 총액이 예산을 넘지 않도록 1원씩 줄임
                                   let testWage = Math.floor(best);
-                                  while (testWage > MIN_WAGE_2025) {
+                                  while (testWage > LEGAL_INFO.MIN_WAGE) {
                                     let totalCost = (testWage * totalPayHours) * 1.096541 + (testWage * 209) * 0.0147;
                                     if (totalCost <= budgetForMaxWage) break;
                                     testWage--;
@@ -675,7 +642,7 @@ function AllowanceCalculator() {
                                 } else {
                                   // 4대보험 미가입: 산재보험료만 포함
                                   // 총비용 = (시급 × 총근로시간) + (시급 × 209) × 0.0147
-                                  let left = MIN_WAGE_2025, right = 100000, best = MIN_WAGE_2025;
+                                  let left = LEGAL_INFO.MIN_WAGE, right = 100000, best = LEGAL_INFO.MIN_WAGE;
                                   for (let i = 0; i < 30; i++) {
                                     let mid = (left + right) / 2;
                                     let totalCost = (mid * totalPayHours) + (mid * 209) * 0.0147;
@@ -688,7 +655,7 @@ function AllowanceCalculator() {
                                   }
                                   // 후처리: 실제 총액이 예산을 넘지 않도록 1원씩 줄임
                                   let testWage = Math.floor(best);
-                                  while (testWage > MIN_WAGE_2025) {
+                                  while (testWage > LEGAL_INFO.MIN_WAGE) {
                                     let totalCost = (testWage * totalPayHours) + (testWage * 209) * 0.0147;
                                     if (totalCost <= budgetForMaxWage) break;
                                     testWage--;
@@ -715,7 +682,7 @@ function AllowanceCalculator() {
                                 setApplyMinWage(e.target.checked);
                                 setApplyMaxWage(false);
                                 if (e.target.checked) {
-                                  setDesiredWage(formatNumber(MIN_WAGE_2025));
+                                  setDesiredWage(formatNumber(LEGAL_INFO.MIN_WAGE));
                                 }
                               }}
                               style={{marginRight:6}}
@@ -731,10 +698,10 @@ function AllowanceCalculator() {
                   )}
                   {wageType === 'monthly' && (
                     <div style={{marginTop:8}}>
-                      {Number(budget.replace(/,/g, '')) < MIN_MONTHLY_2025 ? (
+                      {Number(budget.replace(/,/g, '')) < LEGAL_INFO.MIN_MONTHLY ? (
                         <>
                           <div style={{color:'#d32f2f', marginBottom:4, fontSize:'0.97em'}}>
-                            ⚠️ 입력하신 예산이 최저월급({formatNumber(MIN_MONTHLY_2025)}원)보다 낮습니다. 최저월급이 자동 적용됩니다.
+                            ⚠️ 입력하신 예산이 최저월급({formatNumber(LEGAL_INFO.MIN_MONTHLY)}원)보다 낮습니다. 최저월급이 자동 적용됩니다.
                           </div>
                           <label style={{fontSize:'0.95em'}}>
                             <input
@@ -744,7 +711,7 @@ function AllowanceCalculator() {
                                 setApplyMinWage(e.target.checked);
                                 setApplyMaxWage(false);
                                 if (e.target.checked) {
-                                  setDesiredWage(formatNumber(MIN_MONTHLY_2025));
+                                  setDesiredWage(formatNumber(LEGAL_INFO.MIN_MONTHLY));
                                 }
                               }}
                               style={{marginRight:6}}
@@ -779,15 +746,15 @@ function AllowanceCalculator() {
                     {wageType === 'hourly' && budget && (
                       <span style={{display:'block', marginTop:4, color: isHourlyBudgetEnough ? '#1976d2' : '#d32f2f'}}>
                         {isHourlyBudgetEnough
-                          ? `✅ 예산이 최저시급(${formatNumber(MIN_WAGE_2025)}원) 이상입니다.`
-                          : `⚠️ 입력하신 예산(${formatNumber(Number(budget.replace(/,/g, '')))})이 최저시급(${formatNumber(MIN_WAGE_2025)})보다 낮습니다.`}
+                          ? `✅ 예산이 최저시급(${formatNumber(LEGAL_INFO.MIN_WAGE)}원) 이상입니다.`
+                          : `⚠️ 입력하신 예산(${formatNumber(Number(budget.replace(/,/g, '')))})이 최저시급(${formatNumber(LEGAL_INFO.MIN_WAGE)})보다 낮습니다.`}
                       </span>
                     )}
                     {wageType === 'monthly' && budget && (
-                      <span style={{display:'block', marginTop:4, color: Number(budget.replace(/,/g, '')) >= MIN_MONTHLY_2025 ? '#1976d2' : '#d32f2f'}}>
-                        {Number(budget.replace(/,/g, '')) < MIN_MONTHLY_2025 ? 
-                          `⚠️ 입력하신 예산(${formatNumber(Number(budget.replace(/,/g, '')))})이 최저월급(${formatNumber(MIN_MONTHLY_2025)})보다 낮습니다.` : 
-                          `✅ 예산이 최저월급(${formatNumber(MIN_MONTHLY_2025)}원) 이상입니다.`
+                      <span style={{display:'block', marginTop:4, color: Number(budget.replace(/,/g, '')) >= LEGAL_INFO.MIN_MONTHLY ? '#1976d2' : '#d32f2f'}}>
+                        {Number(budget.replace(/,/g, '')) < LEGAL_INFO.MIN_MONTHLY ? 
+                          `⚠️ 입력하신 예산(${formatNumber(Number(budget.replace(/,/g, '')))})이 최저월급(${formatNumber(LEGAL_INFO.MIN_MONTHLY)})보다 낮습니다.` : 
+                          `✅ 예산이 최저월급(${formatNumber(LEGAL_INFO.MIN_MONTHLY)}원) 이상입니다.`
                         }
                       </span>
                     )}
@@ -808,14 +775,14 @@ function AllowanceCalculator() {
                     <tbody>
                       <tr><th>예산</th><td>{result.wageType === 'hourly' ? `월 ${formatNumber(result.budgetNum)}원` : `${formatNumber(result.budgetNum)}원`}</td></tr>
                       <tr><th>임금</th><td>{result.wageType === 'hourly' ? (() => {
-                        const isMinWageCompliant = result.wage >= MIN_WAGE_2025;
+                        const isMinWageCompliant = result.wage >= LEGAL_INFO.MIN_WAGE;
                         return (
                           <>
                             {isMinWageCompliant ? '✅' : '❌'} 시급 {formatNumber(result.wage)}원 {isMinWageCompliant ? '(최저시급 이상)' : '(최저시급 미만)'}
                           </>
                         );
                       })() : (() => {
-                        const isMinWageCompliant = result.wage >= MIN_MONTHLY_2025;
+                        const isMinWageCompliant = result.wage >= LEGAL_INFO.MIN_MONTHLY;
                         return (
                           <>
                             {isMinWageCompliant ? '✅' : '❌'} {formatNumber(result.wage)}원 {isMinWageCompliant ? '(최저월급 이상)' : '(최저월급 미만)'}
@@ -1054,10 +1021,10 @@ function AllowanceCalculator() {
                         ) : (
                           <>
                             <b>❌ 풀타임 고용 불가</b><br />
-                            예산 {formatNumber(result.budgetNum)}원이 최저월급 {formatNumber(MIN_MONTHLY_2025)}원보다 낮습니다.<br />
-                            풀타임 고용을 위해서는 최소 {formatNumber(MIN_MONTHLY_2025)}원 이상의 예산이 필요합니다.<br />
+                            예산 {formatNumber(result.budgetNum)}원이 최저월급 {formatNumber(LEGAL_INFO.MIN_MONTHLY)}원보다 낮습니다.<br />
+                            풀타임 고용을 위해서는 최소 {formatNumber(LEGAL_INFO.MIN_MONTHLY)}원 이상의 예산이 필요합니다.<br />
                             <div style={{fontSize:'0.95em', color:'#888', marginTop:'0.5em', textAlign:'left'}}>
-                              필요 예산: 최저월급 {formatNumber(MIN_MONTHLY_2025)}원 + 4대보험료 약 {formatNumber(Math.round(MIN_MONTHLY_2025 * 0.111241))}원 = 약 {formatNumber(Math.round(MIN_MONTHLY_2025 * 1.111241))}원
+                              필요 예산: 최저월급 {formatNumber(LEGAL_INFO.MIN_MONTHLY)}원 + 4대보험료 약 {formatNumber(Math.round(LEGAL_INFO.MIN_MONTHLY * 0.111241))}원 = 약 {formatNumber(Math.round(LEGAL_INFO.MIN_MONTHLY * 1.111241))}원
                             </div>
                           </>
                         )}

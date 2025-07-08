@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { 
+  timeStrToMinutes, 
+  calculateInsurance,
+  calculateProbationSalary,
+  LEGAL_INFO,
+  getPracticalBreakMinutes, // 실무 관행 휴게시간
+  getProbationMinimumWage, // 수습기간 최저임금 하한선 공통 함수
+  calculateWeeklyHolidayPay // 주휴수당 계산 함수
+} from './utils/laborRules';
 
 function ContractPreview() {
   const navigate = useNavigate();
@@ -27,11 +36,9 @@ function ContractPreview() {
     }
   }, [location]);
 
-  // 시간 계산 유틸
+  // 시간 계산 유틸 (공통 함수 사용)
   function getMinutes(t) {
-    if (!t) return 0;
-    const [h, m] = t.split(":").map(Number);
-    return h * 60 + m;
+    return timeStrToMinutes(t);
   }
 
   // 소정 근로시간에 해당하는 종료 시간 계산
@@ -79,32 +86,7 @@ function ContractPreview() {
     return { dayStats, totalWeek, totalMonth, night, over };
   }
 
-  // 4대보험료 계산 함수
-  function calculateInsurance(baseSalary) {
-    const rates = {
-      NATIONAL_PENSION: 0.09,
-      HEALTH_INSURANCE: 0.0709,
-      LONG_TERM_CARE: 0.009182,
-      EMPLOYMENT_INSURANCE: 0.018,
-      INDUSTRIAL_ACCIDENT: 0.0147,
-    };
-    return {
-      nationalPension: Math.round(baseSalary * rates.NATIONAL_PENSION),
-      healthInsurance: Math.round(baseSalary * rates.HEALTH_INSURANCE),
-      longTermCare: Math.round(baseSalary * rates.LONG_TERM_CARE),
-      employmentInsurance: Math.round(baseSalary * rates.EMPLOYMENT_INSURANCE),
-      industrialAccident: Math.round(baseSalary * rates.INDUSTRIAL_ACCIDENT),
-      total: Math.round(baseSalary * (rates.NATIONAL_PENSION + rates.HEALTH_INSURANCE + rates.LONG_TERM_CARE + rates.EMPLOYMENT_INSURANCE + rates.INDUSTRIAL_ACCIDENT))
-    };
-  }
 
-  // 수습기간 임금 계산 함수
-  function calculateProbationSalary(baseSalary, discountPercent) {
-    const discountRate = Number(discountPercent) / 100;
-    const discountedSalary = baseSalary * (1 - discountRate);
-    const minimumProbationSalary = 2096270 * 0.9; // 최저임금의 90%
-    return Math.max(discountedSalary, minimumProbationSalary);
-  }
 
   const generateContractHtml = (form) => {
     // 표준근로계약서 HTML 생성
@@ -144,12 +126,8 @@ function ContractPreview() {
       // 야간수당 (야간근로시간 0.5배 가산)
       nightHours = workStats3.night / 60;
       nightPay = hourlyWage * 0.5 * nightHours;
-      // 주휴수당 (1주 15시간 이상 근로 시, 8시간 기준)
-      let weeklyHolidayPay = 0;
-      if (weeklyWorkHours >= 15) {
-        weeklyHolidayPay = hourlyWage * 8;
-      }
-      monthlyHolidayPay = weeklyHolidayPay * 4.345;
+      // 주휴수당 (통일된 규칙)
+      monthlyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
       // 시급제 총 임금 계산
       totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
     }
@@ -166,36 +144,41 @@ function ContractPreview() {
       probationSalary = probationStandardSalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
     } else if (form.salaryType === 'monthly' && form.probationPeriod) {
       const baseSalaryForProbation = Number(form.monthlySalary);
-      const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount);
+      const monthlyWorkHours = workStats3.totalMonth / 60;
+      const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
       const workStats = calcWorkStats(form);
       const weeklyWorkHours = workStats.totalWeek / 60;
       const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
-      const weeklyHolidayPay = weeklyWorkHours >= 15 ? Math.round(hourlyWage * 8 * 4.345) : 0;
-      probationSalary = probationBaseSalary + weeklyHolidayPay + allowances;
+      probationSalary = probationBaseSalary + calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours) + allowances;
     } else {
-      probationSalary = totalCalculatedSalary;
+      probationSalary = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + weeklyHolidayPay + allowances) : totalCalculatedSalary;
     }
     
+    // 월급제: 기본급은 입력된 월급만, 시급제: 소정근로시간 × 시급
     const baseSalary = form.salaryType === 'monthly' 
       ? (form.monthlySalary ? `${Number(form.monthlySalary).toLocaleString()}원` : '[0,000,000]원')
-      : (form.hourlyWage ? `${form.hourlyWage.toLocaleString()}원/시간` : '[0,000]원/시간');
+      : (form.hourlyWage ? `${Math.round(calculatedMonthlySalary).toLocaleString()}원` : '[0,000]원');
+    
     const allowancesText = form.allowances ? Number(form.allowances).toLocaleString() : '[식대, 교통비, 직책수당 등]';
-    // 월급제 총 임금 계산 (주휴수당 포함)
-    let monthlyTotalSalary = 0;
+    
+    // 주휴수당 계산 (월급제와 시급제 모두)
+    let weeklyHolidayPay = 0;
     if (form.salaryType === 'monthly' && form.monthlySalary) {
-      const monthlyWorkHours = workStats3.totalMonth / 60;
       const weeklyWorkHours = workStats3.totalWeek / 60;
+      const monthlyWorkHours = workStats3.totalMonth / 60;
       const hourlyWage = Number(form.monthlySalary) / monthlyWorkHours;
-      const weeklyHolidayPay = weeklyWorkHours >= 15 ? Math.round(hourlyWage * 8 * 4.345) : 0;
-      monthlyTotalSalary = Number(form.monthlySalary) + weeklyHolidayPay + allowances;
+      weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
+    } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
+      weeklyHolidayPay = monthlyHolidayPay;
     }
-
+    
+    // 총 월 임금 계산 (기본급 + 주휴수당 + 제수당)
     const totalSalary = form.salaryType === 'monthly'
       ? (form.monthlySalary 
-          ? `${monthlyTotalSalary.toLocaleString()}원 (세전)`
+          ? `${(Number(form.monthlySalary) + weeklyHolidayPay + allowances).toLocaleString()}원`
           : '[0,000,000]원')
       : (form.salaryType === 'hourly' && hourlyWage > 0 
-          ? `${Math.round(totalCalculatedSalary).toLocaleString()}원 (시급제 계산)`
+          ? `${Math.round(totalCalculatedSalary).toLocaleString()}원`
           : '[시급제 계산 참조]');
 
     // 실제 근로시간 계산
@@ -582,28 +565,116 @@ function ContractPreview() {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td><strong>소정 근로시간</strong></td>
-                            <td>${standardWorkTimeText}</td>
-                        </tr>
-                        ${overtimeWeeklyHours > 0 ? `
-                        <tr>
-                            <td><strong>연장 근로시간</strong></td>
-                            <td>${overtimeWorkTimeText}</td>
-                        </tr>
-                        ` : ''}
-                        <tr>
-                            <td><strong>휴게 시간</strong></td>
-                            <td>${breakText} (근로시간 중 근로자와 협의하여 부여)</td>
-                        </tr>
-                        <tr>
-                            <td><strong>총 근로시간</strong></td>
-                            <td>${totalWorkTimeText}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>기타 연장/야간/휴일 근로</strong></td>
-                            <td>갑의 지시 또는 을의 동의 하에 가능하며, 근로기준법에 따라 가산수당 지급 (연장근로는 주 12시간을 한도로 함)</td>
-                        </tr>
+                        ${(() => {
+                            if (form.workTimeType === 'same') {
+                                const startTime = form.commonStart || '09:00';
+                                const endTime = form.commonEnd || '18:00';
+                                const breakTime = Number(form.commonBreak) || 0;
+                                const workHours = getMinutes(endTime) - getMinutes(startTime);
+                                const standardWorkHours = workHours - breakTime;
+                                const overtimeHours = Math.max(0, standardWorkHours - 480); // 8시간 초과분
+                                const dailyStandardHours = (standardWorkHours / 60).toFixed(1);
+                                const weeklyStandardHours = ((standardWorkHours * form.days.length) / 60).toFixed(1);
+                                const monthlyStandardHours = ((standardWorkHours * form.days.length * 4.345) / 60).toFixed(1);
+                                return `
+                                <tr>
+                                    <td><strong>근무시간</strong></td>
+                                    <td>${startTime} - ${endTime} (${form.days.join(', ')})</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left: 2rem;"><strong>• 휴게시간</strong></td>
+                                    <td>${(breakTime / 60).toFixed(1)}시간 (근로시간 중 근로자와 협의하여 부여)</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left: 2rem;"><strong>• 소정근로시간</strong></td>
+                                    <td>
+                                        일일: ${dailyStandardHours}시간<br/>
+                                        주간: ${weeklyStandardHours}시간<br/>
+                                        월간: ${monthlyStandardHours}시간 (휴게시간 제외)
+                                    </td>
+                                </tr>
+                                ${overtimeHours > 0 ? `
+                                <tr>
+                                    <td style="padding-left: 2rem;"><strong>• 연장근로시간</strong></td>
+                                    <td>${(overtimeHours / 60).toFixed(1)}시간 (일 8시간 초과분)</td>
+                                </tr>
+                                ` : ''}
+                                `;
+                            } else {
+                                // 요일별 상이한 경우: 실무 관행 기준으로 표시
+                                let rows = '';
+                                rows += `
+                                <tr>
+                                  <td colspan="2" style="font-weight:700; font-size:1.08rem; color:#1e293b; padding-bottom:0.5rem;">근로시간 및 휴게시간</td>
+                                </tr>
+                                `;
+                                form.days.forEach(day => {
+                                    const dayTime = form.dayTimes[day];
+                                    if (dayTime && dayTime.start && dayTime.end) {
+                                        const startTime = dayTime.start;
+                                        const endTime = dayTime.end;
+                                        const workMinutes = timeStrToMinutes(endTime) - timeStrToMinutes(startTime);
+                                        const breakMinutes = getPracticalBreakMinutes(workMinutes);
+                                        const standardWorkMinutes = workMinutes - breakMinutes;
+                                        const overtimeMinutes = Math.max(0, standardWorkMinutes - 480);
+                                        let rightText = `일일 소정근로시간 ${(standardWorkMinutes/60).toFixed(1)}시간 / 휴게시간 ${breakMinutes}분`;
+                                        if (overtimeMinutes > 0) {
+                                            rightText += ` / 연장근무 ${overtimeMinutes}분`;
+                                        }
+                                        rows += `
+                                        <tr>
+                                          <td style="vertical-align:top; width:40%; padding-left:1.2rem;">- ${day} (${startTime}~${endTime} / 휴게 ${Math.round(breakMinutes/60*10)/10}시간)</td>
+                                          <td style="vertical-align:top; width:60%; color:#64748b; font-size:0.98rem;">${rightText}</td>
+                                        </tr>
+                                        `;
+                                    }
+                                });
+                                // 통계 계산
+                                let totalWorkMinutes = 0, totalBreakMinutes = 0;
+                                form.days.forEach(day => {
+                                    const dayTime = form.dayTimes[day];
+                                    if (dayTime && dayTime.start && dayTime.end) {
+                                        const workMinutes = timeStrToMinutes(dayTime.end) - timeStrToMinutes(dayTime.start);
+                                        const breakMinutes = getPracticalBreakMinutes(workMinutes);
+                                        totalWorkMinutes += workMinutes;
+                                        totalBreakMinutes += breakMinutes;
+                                    }
+                                });
+                                const weeklyWorkMinutes = totalWorkMinutes - totalBreakMinutes;
+                                const weeklyBreakHours = (totalBreakMinutes / 60).toFixed(1);
+                                const weeklyWorkHours = (weeklyWorkMinutes / 60).toFixed(1);
+                                const monthlyWorkMinutes = (totalWorkMinutes - totalBreakMinutes) * 4.345;
+                                const monthlyBreakHours = ((totalBreakMinutes * 4.345) / 60).toFixed(1);
+                                const monthlyWorkHours = (monthlyWorkMinutes / 60).toFixed(1);
+                                // 근로시간 통계 박스
+                                rows += `
+                                <tr>
+                                  <td colspan="2" style="padding-top:1.2rem; padding-bottom:0.2rem;">
+                                    <div style="background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:10px; padding:1.1rem 1.2rem 0.7rem 1.2rem; margin-bottom:0.2rem;">
+                                      <div style="font-weight:600; color:#334155; font-size:1.01rem; margin-bottom:0.5rem;">근로시간 통계</div>
+                                      <table style="width:100%; font-size:0.99rem; background:transparent;">
+                                        <tr><td style="width:45%; color:#475569;">주간 합계</td><td>${weeklyWorkHours}시간 / (휴게시간 ${weeklyBreakHours}시간 제외 시)</td></tr>
+                                        <tr><td style="color:#475569;">월간 합계</td><td>${monthlyWorkHours}시간 / (휴게시간 ${monthlyBreakHours}시간 제외 시)</td></tr>
+                                      </table>
+                                    </div>
+                                  </td>
+                                </tr>
+                                <tr><td colspan="2" style="padding-top:1.1rem; font-weight:600; color:#1e293b;">기타 연장/야간/휴일 관련</td></tr>
+                                <tr><td colspan="2">${(() => {
+                                    const workStats = calcWorkStats(form);
+                                    const weeklyWorkHours = workStats.totalWeek / 60;
+                                    const hasOvertime = weeklyWorkHours > 40 || Object.values(workStats.dayStats).some(d => d.over > 0);
+                                    const hasNight = workStats.night > 0;
+                                    let details = [];
+                                    if (hasOvertime) details.push('연장근로(1일 8시간, 1주 40시간 초과분 발생, 통상임금의 50% 가산수당 지급)');
+                                    if (hasNight) details.push('야간근로(22:00~06:00, 통상임금의 50% 가산수당 지급)');
+                                    details.push('휴일근로(주휴일, 공휴일 등 법정휴일 근로 시 통상임금의 50% 가산수당 지급)');
+                                    return details.length > 0 ? details.map(d => `<div>• ${d}</div>`).join('') : '갑의 지시 또는 을의 동의 하에 가능하며, 근로기준법에 따라 가산수당 지급 (연장근로는 주 12시간을 한도로 함)';
+                                })()}</td></tr>
+                                `;
+                                return rows;
+                            }
+                        })()}
                     </tbody>
                 </table>
             </div>
@@ -664,7 +735,11 @@ function ContractPreview() {
                     <tbody>
                         <tr>
                             <td><strong>월 기본급</strong></td>
-                            <td>${baseSalary} ${form.salaryType === 'monthly' && form.monthlySalary ? `(월 소정근로시간 ${(workStats3.totalMonth / 60).toFixed(1)}시간 × 시급 ${Math.round(Number(form.monthlySalary) / (workStats3.totalMonth / 60)).toLocaleString()}원)` : ''}</td>
+                            <td>${baseSalary} ${form.salaryType === 'monthly' && form.monthlySalary ? `(월 소정근로시간 ${(workStats3.totalMonth / 60).toFixed(1)}시간 × 시급 ${Math.round(Number(form.monthlySalary) / (workStats3.totalMonth / 60)).toLocaleString()}원)` : form.salaryType === 'hourly' && hourlyWage > 0 ? `(월 소정근로시간 ${standardMonthlyHours.toFixed(1)}시간 × 시급 ${hourlyWage.toLocaleString()}원)` : ''}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>주휴수당</strong></td>
+                            <td>${weeklyHolidayPay > 0 ? `${Math.round(weeklyHolidayPay).toLocaleString()}원` : '-'}</td>
                         </tr>
                         <tr>
                             <td><strong>제수당</strong></td>
@@ -674,97 +749,29 @@ function ContractPreview() {
                             <td><strong>총 월 임금</strong></td>
                             <td>${totalSalary} ${form.salaryType === 'monthly' && form.monthlySalary ? `(상기 기본급, 주휴수당, 제수당의 합계액)` : ''}</td>
                         </tr>
-                        ${form.probationPeriod ? `
                         <tr>
-                            <td style="color: #6b7280; font-weight: normal;"><strong style="color: #6b7280;">수습기간 임금</strong></td>
-                            <td style="color: #6b7280; font-weight: normal;">
-                                <p><strong style="color: #6b7280;">수습기간:</strong> ${form.probationPeriod}</p>
-                                <p><strong style="color: #6b7280;">수습기간 임금:</strong> ${probationSalary.toLocaleString()}원</p>
-                                <p><strong style="color: #6b7280;">감액률:</strong> ${form.probationDiscount}%</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="color: #6b7280; font-weight: normal;"><strong style="color: #6b7280;">수습기간 임금 상세 내역</strong></td>
-                            <td style="color: #6b7280; font-weight: normal;">
-                                ${(() => {
-                                    if (form.salaryType === 'hourly') {
-                                        const baseSalaryForProbation = calculatedMonthlySalary; // 소정근로시간 기준 기본급
-                                        const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount);
-                                        
-                                        return `
-                                            <p>• 수습기간 기본급: ${probationBaseSalary.toLocaleString()}원 (정상 기본급 ${baseSalaryForProbation.toLocaleString()}원의 ${100 - Number(form.probationDiscount)}%)</p>
-                                            ${overtimePay > 0 ? `<p>• 연장수당: ${Math.round(overtimePay).toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
-                                            ${nightPay > 0 ? `<p>• 야간수당: ${Math.round(nightPay).toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
-                                            ${monthlyHolidayPay > 0 ? `<p>• 주휴수당: ${Math.round(monthlyHolidayPay).toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
-                                            ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
-                                            <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px; color: #6b7280;">
-                                                수습기간 총 임금: ${probationSalary.toLocaleString()}원
-                                            </p>
-                                        `;
-                                    } else {
-                                        const baseSalaryForProbation = Number(form.monthlySalary);
-                                        const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount);
-                                        const workStats = calcWorkStats(form);
-                                        const weeklyWorkHours = workStats.totalWeek / 60;
-                                        const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
-                                        const weeklyHolidayPay = weeklyWorkHours >= 15 ? Math.round(hourlyWage * 8 * 4.345) : 0;
-                                        
-                                        return `
-                                            <p>• 수습기간 기본급: ${probationBaseSalary.toLocaleString()}원 (정상 기본급 ${baseSalaryForProbation.toLocaleString()}원의 ${100 - Number(form.probationDiscount)}%)</p>
-                                            ${weeklyWorkHours >= 15 ? `<p>• 주휴수당: ${weeklyHolidayPay.toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
-                                            ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
-                                            <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px; color: #6b7280;">
-                                                수습기간 총 임금: ${(probationBaseSalary + weeklyHolidayPay + allowances).toLocaleString()}원
-                                            </p>
-                                        `;
-                                    }
-                                })()}
-                            </td>
-                        </tr>
-                        ` : ''}
-                        ${form.salaryType === 'hourly' && hourlyWage > 0 ? `
-                        <tr>
-                            <td><strong>월 급여 상세 내역</strong></td>
+                            <td><strong>총 월 임금 상세 내역</strong></td>
                             <td>
-                                ${(() => {
-                                    return `
-                                        <p>• 기본급 (${hourlyWage.toLocaleString()}원 × ${standardMonthlyHours.toFixed(1)}시간): ${Math.round(calculatedMonthlySalary).toLocaleString()}원</p>
-                                        ${overtimeHours > 0 ? `<p>• 연장수당 (${hourlyWage.toLocaleString()}원 × 1.5 × ${overtimeHours.toFixed(1)}시간): ${Math.round(overtimePay).toLocaleString()}원</p>` : ''}
-                                        ${nightHours > 0 ? `<p>• 야간수당 (${hourlyWage.toLocaleString()}원 × 0.5 × ${nightHours.toFixed(1)}시간): ${Math.round(nightPay).toLocaleString()}원</p>` : ''}
-                                        ${monthlyHolidayPay > 0 ? `<p>• 주휴수당 (${hourlyWage.toLocaleString()}원 × 8시간 × 4.345주): ${Math.round(monthlyHolidayPay).toLocaleString()}원</p>` : ''}
-                                        ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원</p>` : ''}
-                                        <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px;">
-                                            월 총 임금: ${Math.round(totalCalculatedSalary).toLocaleString()}원 (세전, 주휴수당 포함 시)
-                                        </p>
-                                    `;
-                                })()}
-                            </td>
-                        </tr>
-                        ` : ''}
-                        ${form.salaryType === 'monthly' && form.monthlySalary ? `
-                        <tr>
-                            <td><strong>월급 명세서</strong></td>
-                            <td>
-                                ${(() => {
-                                  const workStats = calcWorkStats(form);
-                                  const monthlyWorkHours = workStats.totalMonth / 60;
-                                  const weeklyWorkHours = workStats.totalWeek / 60;
-                                  const hourlyWage = Number(form.monthlySalary) / monthlyWorkHours;
-                                  const weeklyHolidayPay = weeklyWorkHours >= 15 ? Math.round(hourlyWage * 8 * 4.345) : 0;
-                                  
-                                  return `
-                                    <p>• 기본급 (${monthlyWorkHours.toFixed(1)}시간 × ${hourlyWage.toFixed(0)}원): ${Number(form.monthlySalary).toLocaleString()}원</p>
-                                    ${weeklyWorkHours >= 15 ? `<p>• 주휴수당 (${hourlyWage.toFixed(0)}원 × 8시간 × 4.345주): ${weeklyHolidayPay.toLocaleString()}원</p>` : ''}
+                                ${form.salaryType === 'hourly' && hourlyWage > 0 ? `
+                                    <p>• 기본급 (${hourlyWage.toLocaleString()}원 × ${standardMonthlyHours.toFixed(1)}시간): ${Math.round(calculatedMonthlySalary).toLocaleString()}원</p>
+                                    ${overtimeHours > 0 ? `<p>• 연장수당 (${hourlyWage.toLocaleString()}원 × 1.5 × ${overtimeHours.toFixed(1)}시간): ${Math.round(overtimePay).toLocaleString()}원</p>` : ''}
+                                    ${nightHours > 0 ? `<p>• 야간수당 (${hourlyWage.toLocaleString()}원 × 0.5 × ${nightHours.toFixed(1)}시간): ${Math.round(nightPay).toLocaleString()}원</p>` : ''}
+                                    ${monthlyHolidayPay > 0 ? `<p>• 주휴수당 (${hourlyWage.toLocaleString()}원 × ${weeklyWorkHours >= 40 ? '8시간' : `${(weeklyWorkHours / 40 * 8).toFixed(1)}시간`} × 4.345주): ${Math.round(monthlyHolidayPay).toLocaleString()}원</p>` : ''}
+                                    ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원</p>` : ''}
+                                    <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px;">
+                                        월 총 임금: ${Math.round(totalCalculatedSalary).toLocaleString()}원
+                                    </p>
+                                ` : form.salaryType === 'monthly' && form.monthlySalary ? `
+                                    <p>• 기본급 (${(workStats3.totalMonth / 60).toFixed(1)}시간 × ${Math.round(Number(form.monthlySalary) / (workStats3.totalMonth / 60)).toLocaleString()}원): ${Number(form.monthlySalary).toLocaleString()}원</p>
+                                    ${weeklyHolidayPay > 0 ? `<p>• 주휴수당: ${Math.round(weeklyHolidayPay).toLocaleString()}원</p>` : ''}
                                     ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원</p>` : ''}
                                     <p>• 기타 연장근로수당 등: 별도</p>
                                     <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px;">
-                                      월 총 임금: ${(Number(form.monthlySalary) + weeklyHolidayPay + allowances).toLocaleString()}원 (세전, 주휴수당 포함 시)
+                                      월 총 임금: ${(Number(form.monthlySalary) + weeklyHolidayPay + allowances).toLocaleString()}원
                                     </p>
-                                  `;
-                                })()}
+                                ` : ''}
                             </td>
                         </tr>
-                        ` : ''}
                         <tr>
                             <td><strong>임금 지급일</strong></td>
                             <td>${form.payday || '매월 25일'}</td>
@@ -777,6 +784,62 @@ function ContractPreview() {
                             <td><strong>임금 계산 기간</strong></td>
                             <td>매월 1일부터 말일까지</td>
                         </tr>
+                        ${form.probationPeriod ? `
+                        <tr>
+                            <td colspan="2" style="padding-left:2.5rem; background:transparent; border:none;">
+                                <div style="background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:10px; padding:1.1rem 1.2rem 0.7rem 1.2rem; margin:0.2rem 0 0.2rem 0;">
+                                    <div style="font-weight:600; color:#334155; font-size:1.01rem; margin-bottom:0.5rem;">수습기간 임금 안내:</div>
+                                    <div style="font-size:0.99rem; color:#22223b; margin-bottom:0.5rem;">
+                                        <strong>수습기간:</strong> ${form.probationPeriod}<br/>
+                                        <strong>수습기간 임금:</strong> ${probationSalary.toLocaleString()}원<br/>
+                                        <strong>감액률:</strong> ${form.probationDiscount}%
+                                    </div>
+                                    <div style="font-weight:600; color:#334155; font-size:0.99rem; margin-bottom:0.3rem;">수습기간 임금 상세 내역</div>
+                                    <div style="font-size:0.98rem; color:#374151;">
+                                        ${(() => {
+                                            if (form.salaryType === 'hourly') {
+                                                const baseSalaryForProbation = hourlyWage * standardMonthlyHours;
+                                                const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, standardMonthlyHours); // 시간 단위로 전달
+                                                // 최저임금 하한선: 월 소정근로시간 × 최저시급 × 90% (공통 함수 사용)
+                                                const LEGAL_MIN_PROBATION = getProbationMinimumWage(standardMonthlyHours); // 시간 단위로 전달
+                                                let probationTotal = probationBaseSalary + (monthlyHolidayPay || 0) + (allowances || 0);
+                                                let minWageNotice = '';
+                                                if (probationTotal < LEGAL_MIN_PROBATION) {
+                                                    probationTotal = LEGAL_MIN_PROBATION;
+                                                    minWageNotice = `<div style="background:#fee2e2; color:#b91c1c; border:1.5px solid #f87171; border-radius:8px; padding:0.7rem 1rem; margin:0.7rem 0; font-weight:bold; display:flex; align-items:center; gap:0.6em; font-size:1.04rem;">
+                                                    <span style='font-size:1.3em;'>⚠️</span> 수습기간 총 임금이 <u>법정 최저임금 90%</u> 미만이므로, <b>${LEGAL_MIN_PROBATION.toLocaleString()}원</b>으로 보정됩니다.<br/>(월 소정근로시간 × 최저시급 × 90% 기준, 공통함수 사용)</div>`;
+                                                }
+                                                return `
+                                                <p>• 수습기간 기본급: ${probationBaseSalary.toLocaleString()}원 (정상 기본급 ${baseSalaryForProbation.toLocaleString()}원의 ${form.probationDiscount}% 감액)</p>
+                                                ${monthlyHolidayPay > 0 ? `<p>• 주휴수당: ${Math.round(monthlyHolidayPay).toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
+                                                ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
+                                                ${minWageNotice}
+                                                <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px; color: #6b7280;">
+                                                    수습기간 총 임금: ${probationTotal.toLocaleString()}원
+                                                </p>
+                                                `;
+                                            } else {
+                                                const baseSalaryForProbation = Number(form.monthlySalary);
+                                                const monthlyWorkHours = workStats3.totalMonth / 60;
+                                                const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
+                                                const workStats = calcWorkStats(form);
+                                                const weeklyWorkHours = workStats.totalWeek / 60;
+                                                const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
+                                                return `
+                                                <p>• 수습기간 기본급: ${probationBaseSalary.toLocaleString()}원 (정상 기본급 ${baseSalaryForProbation.toLocaleString()}원의 ${100 - Number(form.probationDiscount)}%)</p>
+                                                ${weeklyWorkHours >= 15 ? `<p>• 주휴수당: ${calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours).toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
+                                                ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
+                                                <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px; color: #6b7280;">
+                                                    수습기간 총 임금: ${(probationBaseSalary + calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours) + allowances).toLocaleString()}원
+                                                </p>
+                                                `;
+                                            }
+                                        })()}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        ` : ''}
                     </tbody>
                 </table>
             </div>
@@ -784,16 +847,6 @@ function ContractPreview() {
                 <div class="title">■ 중요 안내: 임금 지급의 원칙</div>
                 <div class="content">법정 수당(연장, 야간, 휴일근로수당 등)은 월 총 임금 외에 발생 시 별도로 가산하여 지급됩니다. 주휴수당은 월 총 임금에 포함되어 지급됩니다. (2025년 최저시급: 10,030원/시간, 최저월급: 2,096,270원 (209시간 기준))</div>
                 <div class="content">※ 연장, 야간, 휴일근로가 발생할 경우 해당 수당은 근로기준법에 따라 별도로 계산하여 지급한다.</div>
-                ${form.probationPeriod ? `
-                <div class="content" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; color: #6b7280; font-weight: normal;">
-                    <strong style="color: #6b7280;">■ 수습기간 임금 안내:</strong><br>
-                    • 수습기간: ${form.probationPeriod}<br>
-                    • 수습기간 임금: ${probationSalary.toLocaleString()}원 (정상 임금: ${(form.salaryType === 'hourly' ? totalCalculatedSalary : (Number(form.monthlySalary) + (workStats3.totalWeek / 60 >= 15 ? Math.round((Number(form.monthlySalary) / (workStats3.totalMonth / 60)) * 8 * 4.345) : 0) + allowances)).toLocaleString()}원)<br>
-                    • 수습기간 중에는 최저임금의 90% 이상을 지급할 수 있습니다 (근로기준법 제35조)<br>
-                    • 수습기간 중에도 주휴수당, 연장수당, 야간수당, 제수당은 정상적으로 지급됩니다<br>
-                    • 기본급만 감액 적용되며, 기타 수당은 감액되지 않습니다
-                </div>
-                ` : ''}
             </div>
         </section>
 
@@ -860,27 +913,18 @@ function ContractPreview() {
                 <li>근로기준법 및 기타 관련 법령에 의거한 해고 또는 사직 사유가 발생한 경우</li>
                 <li>갑의 사업 폐지, 경영상 필요 등 정당한 사유가 있는 경우 (30일 전 통지)</li>
                 <li>갑 또는 을이 중대한 위반행위를 한 경우</li>
-                <li>을의 사직 의사가 있는 경우, 원활한 업무 인수인계 위해 퇴직 예정 30일 전에 사용자에게 통보 주시기 바랍니다.</li>
+                <li>을의 사직 의사가 있는 경우, 원활한 업무 인수인계 위해 퇴직 예정 30일 전에 사용자에게 주시면 감사하겠습니다.</li>                 
             </ol>
             ${form.probationPeriod ? `
-            <div class="mt-6 overflow-x-auto">
-                <table class="min-w-full bg-white rounded-lg shadow-sm contract-table">
-                    <thead>
-                        <tr>
-                            <th class="rounded-tl-lg" style="color: #6b7280; font-weight: normal;">수습기간 만료 후</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="color: #6b7280; font-weight: normal;">
-                                <p><strong style="color: #6b7280;">본 채용 여부 결정:</strong> 수습기간 중 업무 능력 및 태도를 평가하며, 결과에 따라 본 채용 여부가 결정됩니다.</p>
-                                <p><strong style="color: #6b7280;">정식 채용 시:</strong> 수습기간 종료 후 정식 채용 시에는 정상 임금(감액 없는 임금)으로 변경됩니다.</p>
-                                <p><strong style="color: #6b7280;">자동 채용:</strong> 수습 종료 후 1개월 이내에 별도 통지가 없으면 정식 채용된 것으로 간주합니다.</p>
-                                <p><strong style="color: #6b7280;">수습기간 연장:</strong> 필요시 상호 합의 하에 연장할 수 있으나, 총 수습기간은 3개월을 초과할 수 없습니다.</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div style="padding-left:2.5rem; margin-top:0.5rem;">
+                <div style="background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:10px; padding:1.1rem 1.2rem 0.7rem 1.2rem; margin:0.2rem 0 0.2rem 0;">
+                    <div style="font-weight:600; color:#334155; font-size:1.01rem; margin-bottom:0.5rem;">수습기간 만료 후 안내</div>
+                    <div style="font-size:0.99rem; color:#374151;">
+                        <p><strong>본 채용 여부 결정:</strong> 수습기간 중 업무 능력 및 태도를 평가하며, 본 채용 여부가 결정됩니다.</p>
+                        <p><strong>정식 채용 시:</strong> 수습기간 종료 후 정식 채용 시에는 정상 임금(감액 없는 임금)으로 변경됩니다.</p>
+                        <p><strong>자동 채용:</strong> 수습 종료 후 1개월 이내에 별도 통지가 없으면 정식 채용된 것으로 간주합니다.</p>
+                    </div>
+                </div>
             </div>
             ` : ''}
             <div class="note mt-6">
