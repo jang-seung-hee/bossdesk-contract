@@ -33,7 +33,7 @@ function ContractPreview() {
     } else {
       setIsLoading(false);
     }
-  }, [location]);
+  }, [location, generateContractHtml]);
 
   // 시간 계산 유틸 (공통 함수 사용)
   function getMinutes(t) {
