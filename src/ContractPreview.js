@@ -131,7 +131,7 @@ function ContractPreview() {
     }
 
     // 4대보험료 계산
-    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : (typeof totalCalculatedSalary !== 'undefined' ? totalCalculatedSalary : 0);
+    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : 0;
     const insurance = calculateInsurance(baseSalaryForInsurance);
     
     // 수습기간 임금 계산 (시급제: 소정근로시간만 감액)
@@ -149,7 +149,7 @@ function ContractPreview() {
       const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
       probationSalary = probationBaseSalary + calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours) + allowances;
     } else {
-      probationSalary = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + weeklyHolidayPay + allowances) : totalCalculatedSalary;
+      probationSalary = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + weeklyHolidayPay + allowances) : 0;
     }
     
     // 월급제: 기본급은 입력된 월급만, 시급제: 소정근로시간 × 시급
@@ -727,7 +727,7 @@ function ContractPreview() {
                                     ${monthlyHolidayPay > 0 ? `<p>• 주휴수당 (${hourlyWage.toLocaleString()}원 × ${weeklyWorkHours >= 40 ? '8시간' : `${(weeklyWorkHours / 40 * 8).toFixed(1)}시간`} × 4.345주): ${Math.round(monthlyHolidayPay).toLocaleString()}원</p>` : ''}
                                     ${allowances > 0 ? `<p>• 제수당: ${allowances.toLocaleString()}원</p>` : ''}
                                     <p style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: bold; margin-top: 8px;">
-                                        월 총 임금: ${Math.round(totalCalculatedSalary).toLocaleString()}원
+                                        월 총 임금: ${typeof totalCalculatedSalary !== 'undefined' ? Math.round(totalCalculatedSalary).toLocaleString() : ''}원
                                     </p>
                                 ` : form.salaryType === 'monthly' && form.monthlySalary ? `
                                     <p>• 기본급 (${(workStats3.totalMonth / 60).toFixed(1)}시간 × ${Math.round(Number(form.monthlySalary) / (workStats3.totalMonth / 60)).toLocaleString()}원): ${Number(form.monthlySalary).toLocaleString()}원</p>
