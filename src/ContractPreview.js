@@ -4,7 +4,6 @@ import {
   timeStrToMinutes, 
   calculateInsurance,
   calculateProbationSalary,
-  LEGAL_INFO,
   getPracticalBreakMinutes, // 실무 관행 휴게시간
   getProbationMinimumWage, // 수습기간 최저임금 하한선 공통 함수
   calculateWeeklyHolidayPay // 주휴수당 계산 함수
@@ -54,7 +53,7 @@ function ContractPreview() {
   function calcWorkStats(form) {
     let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
     const dayStats = {};
-    const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60; // 22:00~06:00
+    // 야간근로 시간대 정의 (22:00~06:00)
     form.days.forEach(day => {
       let s, e, br;
       if (form.workTimeType === 'same') {
@@ -70,7 +69,8 @@ function ContractPreview() {
       let work = e > s ? e - s : (e + 24 * 60) - s;
       work = Math.max(0, work - br); // 휴게시간 차감
       let nightMin = 0;
-      // 야간근로 계산
+      // 야간근로 계산 (22:00~06:00)
+      const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60;
       for (let t = s; t < s + work + br; t += 10) {
         const cur = t % (24 * 60);
         if (cur >= NIGHT_START || cur < NIGHT_END) nightMin += 10;
@@ -100,11 +100,10 @@ function ContractPreview() {
     const workStats3 = calcWorkStats(form);
     const hourlyWage = Number(form.hourlyWage) || 0;
     const allowances = Number(form.allowances) || 0;
-    const basePay = Number(form.baseSalary) || 0;
     
     // 시급제 계산
     let calculatedMonthlySalary = 0, overtimePay = 0, nightPay = 0, monthlyHolidayPay = 0;
-    let overtimeHours = 0, nightHours = 0, standardMonthlyHours = 0, monthlyWorkHours = 0;
+    let overtimeHours = 0, nightHours = 0, standardMonthlyHours = 0;
     let totalCalculatedSalary = 0;
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
@@ -181,39 +180,9 @@ function ContractPreview() {
           ? `${Math.round(totalCalculatedSalary).toLocaleString()}원`
           : '[시급제 계산 참조]');
 
-    // 실제 근로시간 계산
+    // 실제 근로시간 계산 (표시용)
     const workStats = calcWorkStats(form);
     const weeklyWorkHours = workStats.totalWeek / 60; // 분을 시간으로 변환
-    const dailyWorkHours = weeklyWorkHours / form.days.length; // 일일 근로시간
-    
-    // 소정 근로시간과 연장 근로시간 구분
-    const standardWeeklyHours = Math.min(40, weeklyWorkHours); // 소정 근로시간 (최대 40시간)
-    const overtimeWeeklyHours = Math.max(0, weeklyWorkHours - 40); // 연장 근로시간
-    const standardDailyHours = standardWeeklyHours / form.days.length; // 일일 소정 근로시간
-    const overtimeDailyHours = overtimeWeeklyHours / form.days.length; // 일일 연장 근로시간
-    
-    // 소정 근로시간 텍스트 생성
-    const standardWorkTimeText = form.workTimeType === 'same' 
-      ? `1일 ${standardDailyHours.toFixed(1)}시간, 1주 ${standardWeeklyHours.toFixed(1)}시간 (${form.days.join(', ')}, ${form.commonStart || '09:00'} ~ ${getEndTimeForStandardHours(form.commonStart || '09:00', standardDailyHours)})`
-      : `요일별 상이 (${form.days.join(', ')}) - 주 ${standardWeeklyHours.toFixed(1)}시간`;
-    
-    // 연장 근로시간 텍스트 생성 (연장근로가 있는 경우에만)
-    const overtimeWorkTimeText = overtimeWeeklyHours > 0 ? (form.workTimeType === 'same' 
-      ? `1일 ${overtimeDailyHours.toFixed(1)}시간, 1주 ${overtimeWeeklyHours.toFixed(1)}시간 (${form.days.join(', ')}, ${getEndTimeForStandardHours(form.commonStart || '09:00', standardDailyHours)} ~ ${form.commonEnd || '18:00'})`
-      : `요일별 상이 (${form.days.join(', ')}) - 주 ${overtimeWeeklyHours.toFixed(1)}시간`) : '';
-    
-    // 총 근로시간 텍스트
-    const totalWorkTimeText = `1일 ${dailyWorkHours.toFixed(1)}시간, 1주 ${weeklyWorkHours.toFixed(1)}시간 (연장근로 포함)`;
-
-    const breakText = form.workTimeType === 'same'
-      ? `1일 ${(Number(form.commonBreak) / 60).toFixed(1)}시간 (근로시간 중 ${form.commonStart || '12:00'} ~ ${form.commonEnd || '13:00'})`
-      : `요일별 상이 (${form.days.map(day => {
-          const dayTime = form.dayTimes[day];
-          if (dayTime && dayTime.break) {
-            return `${day}: ${(Number(dayTime.break) / 60).toFixed(1)}시간`;
-          }
-          return day;
-        }).join(', ')})`;
 
     const htmlContent = `
 <!DOCTYPE html>
