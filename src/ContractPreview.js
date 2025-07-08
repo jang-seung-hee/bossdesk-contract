@@ -131,7 +131,7 @@ function ContractPreview() {
     }
 
     // 4대보험료 계산
-    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : totalCalculatedSalary;
+    const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : (typeof totalCalculatedSalary !== 'undefined' ? totalCalculatedSalary : 0);
     const insurance = calculateInsurance(baseSalaryForInsurance);
     
     // 수습기간 임금 계산 (시급제: 소정근로시간만 감액)
