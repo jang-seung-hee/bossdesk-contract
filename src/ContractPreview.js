@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   timeStrToMinutes, 
@@ -12,12 +12,11 @@ import { calcWorkStats } from './ContractForm';
 
 function ContractPreview() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [contractHtml, setContractHtml] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [form, setForm] = useState(null);
+  const [form] = useState(null); // setForm 미사용, form만 유지
 
-  // generateContractHtml을 useCallback으로 감싸고, useEffect 위로 옮김
+  // generateContractHtml 함수는 useCallback으로 감싸지 않고, 함수 선언만 남김(필요시)
   const generateContractHtml = useCallback((form) => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 
@@ -93,7 +92,7 @@ function ContractPreview() {
     if (form.salaryType === 'monthly' && form.monthlySalary) {
       const weeklyWorkHours = workStats3.totalWeek / 60;
       // const monthlyWorkHours = workStats3.totalMonth / 60;
-      const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
+      const hourlyWage = Number(form.monthlySalary) / (workStats3.totalMonth / 60);
       weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
     } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
       weeklyHolidayPay = monthlyHolidayPay;
