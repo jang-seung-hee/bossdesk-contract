@@ -12,6 +12,75 @@
   --text-white-70: rgba(255, 255, 255, 0.7);
   --shadow-light: rgba(0, 0, 0, 0.1);
   --shadow-medium: rgba(0, 0, 0, 0.15);
+  --dark-bg: #1c1c1e;
+  --dark-card: #23232a;
+  --dark-text: #f4f4f5;
+  --dark-point: #0a84ff;
+  --dark-border: #2c2c34;
+  --dark-shadow: rgba(0,0,0,0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: var(--dark-bg) !important;
+    color: var(--dark-text) !important;
+    color-scheme: dark;
+  }
+  .home-container,
+  .contract-form-page {
+    background: var(--dark-bg) !important;
+  }
+  .contract-form-container,
+  .final-preview,
+  .ios-card,
+  .work-time-summary-compact,
+  .stat-card,
+  .legal-status-compact,
+  .monthly-wage-guide,
+  .hourly-wage-guide {
+    background: var(--dark-card) !important;
+    color: var(--dark-text) !important;
+    border-color: var(--dark-border) !important;
+    box-shadow: 0 4px 24px var(--dark-shadow);
+  }
+  .form-header,
+  .action-button.primary {
+    background: linear-gradient(135deg, #23232a 0%, #1c1c1e 100%) !important;
+    color: var(--dark-text) !important;
+  }
+  .action-button,
+  .action-button.secondary {
+    background: rgba(36,36,40,0.95) !important;
+    color: var(--dark-text) !important;
+    border-color: var(--dark-border) !important;
+  }
+  .info-box {
+    background: #23232a !important;
+    color: #fbbf24 !important;
+    border-left: 5px solid #fbbf24 !important;
+  }
+  .save-pdf-btn,
+  .fab-btn.print-btn {
+    background: var(--dark-point) !important;
+    color: #fff !important;
+  }
+  .fab-btn.edit-btn {
+    background: #444 !important;
+    color: #fff !important;
+  }
+  .fab-btn.download-btn {
+    background: #30d158 !important;
+    color: #fff !important;
+  }
+  .preview-section-title,
+  .summary-title-compact,
+  .legal-title,
+  .wage-guide-title {
+    color: var(--dark-point) !important;
+  }
+  .footer-text {
+    color: #bdbdbd !important;
+  }
 }
 
 * {

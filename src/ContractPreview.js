@@ -967,14 +967,15 @@ function ContractPreview() {
 
   return (
     <>
-      <div style={{ minHeight: '100vh', background: '#f0f4f8' }}>
+      <div style={{ minHeight: '100vh' }} className="dark:bg-gray-900">
         <div 
           dangerouslySetInnerHTML={{ __html: contractHtml }}
           style={{ padding: '1rem' }}
+          className="dark:bg-gray-900 dark:text-gray-100"
         />
       </div>
       {/* 플로팅 버튼은 React 트리의 최상위에 렌더링 */}
-      <div className="floating-action-buttons no-print" style={{
+      <div className="floating-action-buttons no-print dark:bg-gray-800" style={{
         position: 'fixed',
         left: '50%',
         bottom: '2.5rem',
@@ -984,9 +985,9 @@ function ContractPreview() {
         gap: '1.5rem',
         zIndex: 1000
       }}>
-        <button className="fab-btn edit-btn" onClick={handleGoHome}>홈으로</button>
-        <button className="fab-btn print-btn" onClick={handlePrint}>인쇄하기</button>
-        <button className="fab-btn download-btn" onClick={handleDownload}>다운로드</button>
+        <button className="fab-btn edit-btn dark:bg-gray-700 dark:text-gray-100" onClick={handleGoHome}>홈으로</button>
+        <button className="fab-btn print-btn dark:bg-blue-600 dark:text-white" onClick={handlePrint}>인쇄하기</button>
+        <button className="fab-btn download-btn dark:bg-green-600 dark:text-white" onClick={handleDownload}>다운로드</button>
       </div>
     </>
   );

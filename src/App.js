@@ -10,36 +10,38 @@ function Home() {
   const navigate = useNavigate();
   
   return (
-    <div className="home-container">
+    <div className="home-container dark:bg-gray-900">
       <div className="home-content">
         {/* Hero Section */}
         <div className="hero-section">
-          <h1 className="hero-title">사장님은 법대로</h1>
-          <p className="hero-subtitle">곧 직원쓸 예정인, 초보 사장님의 법 잘알 도우미</p>
+          <h1 className="hero-title dark:text-gray-100">
+            사장님은 법대로</h1>
+          <p className="hero-subtitle dark:text-gray-300">
+            곧 직원쓸 예정인, 초보 사장님의 법 잘알 도우미</p>
         </div>
 
         {/* Action Buttons */}
         <div className="action-buttons">
           <button 
-            className="action-button primary"
+            className="action-button primary dark:bg-gray-800 dark:text-blue-400"
             onClick={() => navigate('/contract')}
           >
             <span className="button-icon">📄</span>
             <span className="button-text">
-              <span className="button-title">근로계약서 만들기</span>
-              <span className="button-description">법적 안전을 위한 맞춤형 계약서</span>
+              <span className="button-title dark:text-blue-300">근로계약서 만들기</span>
+              <span className="button-description dark:text-gray-300">법적 안전을 위한 맞춤형 계약서</span>
             </span>
             <span className="button-arrow">→</span>
           </button>
           
           <button 
-            className="action-button secondary"
+            className="action-button secondary dark:bg-gray-800 dark:text-green-300"
             onClick={() => navigate('/allowance-menu')}
           >
             <span className="button-icon">💰</span>
             <span className="button-text">
-              <span className="button-title">직원 뽑으려면 얼마나 들까?</span>
-              <span className="button-description">정확한 임금 계산 도구</span>
+              <span className="button-title dark:text-green-300">직원 뽑으려면 얼마나 들까?</span>
+              <span className="button-description dark:text-gray-300">정확한 임금 계산 도구</span>
             </span>
             <span className="button-arrow">→</span>
           </button>

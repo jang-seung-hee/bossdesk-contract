@@ -1374,15 +1374,13 @@ function ContractForm() {
   };
 
   return (
-    <div className="contract-form-page">
-      <div className="contract-form-container">
+    <div className="contract-form-page dark:bg-gray-900">
+      <div className="contract-form-container dark:bg-gray-800 dark:text-gray-100">
         {/* Header */}
-        <div className="form-header">
-          <button onClick={() => navigate('/')} className="back-btn">
-            ← 홈으로
-          </button>
-          <h1 className="form-title">표준근로계약서 작성</h1>
-          <div className="header-spacer"></div>
+        <div className="form-header dark:bg-gray-900 dark:text-blue-300">
+          <button className="back-btn dark:bg-gray-700 dark:text-gray-200" onClick={() => navigate('/')}>홈</button>
+          <div className="form-title dark:text-blue-300">직원 뽑으려면 얼마나 들까?</div>
+          <div className="header-spacer" />
         </div>
         
         {/* Progress Bar */}
@@ -1409,7 +1407,7 @@ function ContractForm() {
         </div>
         
         {/* Step Content */}
-        <div className="step-content">
+        <div className="step-content dark:bg-gray-900">
           {renderStep()}
         </div>
         
