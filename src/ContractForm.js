@@ -160,93 +160,7 @@ function ContractForm() {
   }, []);
 
 // 계약 해지 조건 옵션 (MECE 분류)
-const terminationOptions = [
-  {
-    category: "계약기간 만료",
-    options: [
-      {
-        value: "contract_expiry",
-        label: "계약기간 만료 시 자동 해지",
-        description: "계약서에 명시된 계약기간이 만료되면 자동으로 계약이 종료됩니다."
-      }
-    ]
-  },
-  {
-    category: "상호 합의",
-    options: [
-      {
-        value: "mutual_agreement",
-        label: "상호 합의에 의한 해지",
-        description: "갑과 을이 서로 합의하여 계약을 해지할 수 있습니다."
-      },
-      {
-        value: "mutual_agreement_30days",
-        label: "상호 합의 (30일 전 통지)",
-        description: "갑과 을이 서로 합의하여 30일 전 서면 통지 후 계약을 해지할 수 있습니다."
-      }
-    ]
-  },
-  {
-    category: "사용자 사유",
-    options: [
-      {
-        value: "employer_business_reason",
-        label: "사업상 필요에 의한 해지",
-        description: "사업의 폐지, 경영상 필요 등 정당한 사유가 있는 경우 30일 전 통지 후 해지할 수 있습니다."
-      },
-      {
-        value: "employer_30days",
-        label: "사용자 사유 (30일 전 통지)",
-        description: "사용자가 30일 전 서면 통지 후 계약을 해지할 수 있습니다."
-      },
-      {
-        value: "employer_60days",
-        label: "사용자 사유 (60일 전 통지)",
-        description: "사용자가 60일 전 서면 통지 후 계약을 해지할 수 있습니다."
-      }
-    ]
-  },
-  {
-    category: "근로자 사유",
-    options: [
-      {
-        value: "employee_30days",
-        label: "근로자 사유 (30일 전 통지)",
-        description: "근로자가 30일 전 서면 통지 후 계약을 해지할 수 있습니다."
-      },
-      {
-        value: "employee_14days",
-        label: "근로자 사유 (14일 전 통지)",
-        description: "근로자가 14일 전 서면 통지 후 계약을 해지할 수 있습니다."
-      }
-    ]
-  },
-  {
-    category: "법적 사유",
-    options: [
-      {
-        value: "legal_violation",
-        label: "법령 위반 시 즉시 해지",
-        description: "근로기준법 등 관련 법령을 위반하는 경우 즉시 계약을 해지할 수 있습니다."
-      },
-      {
-        value: "serious_misconduct",
-        label: "중대한 위반행위 시 해지",
-        description: "근로자가 중대한 위반행위를 한 경우 즉시 계약을 해지할 수 있습니다."
-      }
-    ]
-  },
-  {
-    category: "기타",
-    options: [
-      {
-        value: "custom",
-        label: "직접 입력",
-        description: "사용자가 직접 계약 해지 조건을 입력합니다."
-      }
-    ]
-  }
-];
+// const terminationOptions = [...] // 사용하지 않으므로 주석 처리 또는 삭제
 
 
 
@@ -460,9 +374,7 @@ const terminationOptions = [
     
     // 수습기간 임금 계산 (모든 단계에서 사용 가능하도록)
     // 기본급만 감액 적용, 제수당은 그대로 지급
-    const baseSalaryForProbation = form.salaryType === 'monthly' 
-      ? Number(form.monthlySalary) 
-      : Math.round(hourlyWage * monthlyWorkHours);
+    // const baseSalaryForProbation = ... // 사용하지 않으므로 주석 처리 또는 삭제
     
 
        
@@ -1162,18 +1074,12 @@ const terminationOptions = [
                       {(() => {
                         const workStats = calcWorkStats(form);
                         const monthlyWorkHours = workStats.totalMonth / 60;
-                        let baseSalaryForProbation;
-                        if (form.salaryType === 'monthly') {
-                          baseSalaryForProbation = Number(form.monthlySalary || 0);
-                        } else {
-                          const hourlyWage = Number(form.hourlyWage || 0);
-                          baseSalaryForProbation = Math.round(hourlyWage * monthlyWorkHours);
-                        }
                         const allowances = Number(form.allowances || 0);
+                        // probationBaseSalary를 월급제/시급제에 따라 직접 계산
                         const probationBaseSalary = form.salaryType === 'hourly'
-                          ? calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours)
-                          : calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
-                        const discountedSalary = baseSalaryForProbation * (1 - Number(form.probationDiscount) / 100);
+                          ? Math.round(Number(form.hourlyWage) * monthlyWorkHours * (1 - Number(form.probationDiscount) / 100))
+                          : Math.round(Number(form.monthlySalary) * (1 - Number(form.probationDiscount) / 100));
+                        const discountedSalary = probationBaseSalary;
                         const minimumProbationSalary = form.salaryType === 'hourly'
                           ? getProbationMinimumWage(monthlyWorkHours)
                           : LEGAL_INFO.MIN_MONTHLY * 0.9;
@@ -1189,9 +1095,9 @@ const terminationOptions = [
                           }}>
                             <p style={{margin: 0, fontWeight: 'bold', color: '#0c4a6e'}}>💰 수습기간 임금 계산:</p>
                             <ul style={{margin: '4px 0 0 0', paddingLeft: 16, color: '#0c4a6e'}}>
-                              <li>정상 기본급: {baseSalaryForProbation.toLocaleString()}원</li>
+                              <li>정상 기본급: {form.salaryType === 'hourly' ? Math.round(Number(form.hourlyWage) * monthlyWorkHours).toLocaleString() : Number(form.monthlySalary).toLocaleString()}원</li>
                               <li>정상 제수당: {allowances.toLocaleString()}원</li>
-                              <li>정상 총 임금: {(baseSalaryForProbation + allowances).toLocaleString()}원</li>
+                              <li>정상 총 임금: {(form.salaryType === 'hourly' ? Math.round(Number(form.hourlyWage) * monthlyWorkHours) : Number(form.monthlySalary)) + allowances}원</li>
                               <li>수습기간 기본급: {probationBaseSalary.toLocaleString()}원 (최저임금 90% 하한선 적용)</li>
                               <li>수습기간 제수당: {allowances.toLocaleString()}원 (제수당은 그대로)</li>
                               <li>최종 수습기간 임금: <strong>{(probationBaseSalary + allowances).toLocaleString()}원</strong></li>
@@ -1399,18 +1305,12 @@ const terminationOptions = [
                     {form.probationPeriod && (() => {
                       const workStats = calcWorkStats(form);
                       const monthlyWorkHours = workStats.totalMonth / 60;
-                      let baseSalaryForProbation;
-                      if (form.salaryType === 'monthly') {
-                        baseSalaryForProbation = Number(form.monthlySalary || 0);
-                      } else {
-                        const hourlyWage = Number(form.hourlyWage || 0);
-                        baseSalaryForProbation = Math.round(hourlyWage * monthlyWorkHours);
-                      }
                       const allowances = Number(form.allowances || 0);
+                      // probationBaseSalary를 월급제/시급제에 따라 직접 계산
                       const probationBaseSalary = form.salaryType === 'hourly'
-                        ? calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours)
-                        : calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
-                      const discountedSalary = baseSalaryForProbation * (1 - Number(form.probationDiscount) / 100);
+                        ? Math.round(Number(form.hourlyWage) * monthlyWorkHours * (1 - Number(form.probationDiscount) / 100))
+                        : Math.round(Number(form.monthlySalary) * (1 - Number(form.probationDiscount) / 100));
+                      const discountedSalary = probationBaseSalary;
                       const minimumProbationSalary = form.salaryType === 'hourly'
                         ? getProbationMinimumWage(monthlyWorkHours)
                         : LEGAL_INFO.MIN_MONTHLY * 0.9;
@@ -1420,7 +1320,7 @@ const terminationOptions = [
                           <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>수습기간</td>
                           <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
                             <div><strong>수습기간:</strong> {form.probationPeriod}</div>
-                            <div><strong>정상 임금:</strong> {(baseSalaryForProbation + allowances).toLocaleString()}원</div>
+                            <div><strong>정상 임금:</strong> {(probationBaseSalary + allowances).toLocaleString()}원</div>
                             <div><strong>수습기간 임금:</strong> {(probationBaseSalary + allowances).toLocaleString()}원</div>
                             {probationBaseSalary === minimumProbationSalary && discountedSalary < minimumProbationSalary ? (
                               <div style={{color: '#dc2626', fontWeight: 'bold'}}>

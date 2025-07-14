@@ -33,7 +33,7 @@ function ContractPreview() {
     } else {
       setIsLoading(false);
     }
-  }, [location]);
+  }, [location, generateContractHtml]);
 
   // 시간 계산 유틸 (공통 함수 사용)
   function getMinutes(t) {
@@ -41,14 +41,14 @@ function ContractPreview() {
   }
 
   // 소정 근로시간에 해당하는 종료 시간 계산
-  function getEndTimeForStandardHours(startTime, standardHours) {
-    if (!startTime) return '18:00';
-    const startMinutes = getMinutes(startTime);
-    const endMinutes = startMinutes + (standardHours * 60);
-    const endHours = Math.floor(endMinutes / 60);
-    const endMins = endMinutes % 60;
-    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
-  }
+  // function getEndTimeForStandardHours(startTime, standardHours) {
+  //   if (!startTime) return '18:00';
+  //   const startMinutes = getMinutes(startTime);
+  //   const endMinutes = startMinutes + (standardHours * 60);
+  //   const endHours = Math.floor(endMinutes / 60);
+  //   const endMins = endMinutes % 60;
+  //   return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+  // }
 
   function calcWorkStats(form) {
     let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
@@ -108,7 +108,7 @@ function ContractPreview() {
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       // 주간/월간 근로시간(시간 단위)
       const weeklyWorkHours = workStats3.totalWeek / 60;
-      const monthlyWorkHours = workStats3.totalMonth / 60; // (실제 사용되는 경우만 남김)
+      // const monthlyWorkHours = workStats3.totalMonth / 60; // (실제 사용되는 경우만 남김)
       // 소정근로시간과 연장근로시간 구분
       const standardWeeklyHours = Math.min(40, weeklyWorkHours);
       const overtimeWeeklyHours = Math.max(0, weeklyWorkHours - 40);
@@ -140,8 +140,8 @@ function ContractPreview() {
       probationSalary = probationStandardSalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
     } else if (form.salaryType === 'monthly' && form.probationPeriod) {
       const baseSalaryForProbation = Number(form.monthlySalary);
-      const monthlyWorkHours = workStats3.totalMonth / 60;
-      const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
+      // const monthlyWorkHours = workStats3.totalMonth / 60;
+      const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, standardMonthlyHours);
       const workStats = calcWorkStats(form);
       const weeklyWorkHours = workStats.totalWeek / 60;
       const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
@@ -161,8 +161,8 @@ function ContractPreview() {
     let weeklyHolidayPay = 0;
     if (form.salaryType === 'monthly' && form.monthlySalary) {
       const weeklyWorkHours = workStats3.totalWeek / 60;
-      const monthlyWorkHours = workStats3.totalMonth / 60;
-      const hourlyWage = Number(form.monthlySalary) / monthlyWorkHours;
+      // const monthlyWorkHours = workStats3.totalMonth / 60;
+      const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
       weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
     } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
       weeklyHolidayPay = monthlyHolidayPay;
@@ -790,6 +790,7 @@ function ContractPreview() {
                                                 const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
                                                 const weeklyWorkHours = workStats.totalWeek / 60;
                                                 const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
+                                                const discountedSalary = probationBaseSalary;
                                                 return `
                                                 <p>• 수습기간 기본급: ${probationBaseSalary.toLocaleString()}원 (정상 기본급 ${baseSalaryForProbation.toLocaleString()}원의 ${100 - Number(form.probationDiscount)}%)</p>
                                                 ${weeklyWorkHours >= 15 ? `<p>• 주휴수당: ${calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours).toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}
