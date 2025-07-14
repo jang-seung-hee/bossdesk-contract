@@ -998,10 +998,82 @@ function ContractPreview() {
 
   return (
     <>
-      <div style={{ minHeight: '100vh', colorScheme: 'light', background: '#f8fafc', color: '#222', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', position: 'relative', zIndex: 1, MozOsxFontSmoothing: 'auto', WebkitFontSmoothing: 'auto', overscrollBehavior: 'none', pointerEvents: 'auto', border: 'none', outline: 'none', boxShadow: 'none', filter: 'none', transition: 'none', fontWeight: 400, fontSize: '1rem', lineHeight: 1.6, letterSpacing: 0, wordBreak: 'keep-all', backgroundColor: '#f8fafc', backgroundImage: 'none', backgroundClip: 'border-box', backgroundOrigin: 'padding-box', backgroundRepeat: 'no-repeat', backgroundAttachment: 'scroll', backgroundPosition: '0 0', backgroundSize: 'auto', borderRadius: 0, borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left', direction: 'ltr', userSelect: 'text', WebkitUserSelect: 'text', msUserSelect: 'text', outlineColor: '#f8fafc', outlineStyle: 'none', outlineWidth: 0, boxShadowColor: 'none', boxShadowBlur: 0, boxShadowSpread: 0, boxShadowInset: 'none', boxShadowOffsetX: 0, boxShadowOffsetY: 0, boxShadowOpacity: 0, boxShadow: 'none', WebkitBoxShadow: 'none', MozBoxShadow: 'none', OBoxShadow: 'none', msBoxShadow: 'none', borderColor: '#f8fafc', borderStyle: 'none', borderWidth: 0, borderImage: 'none', borderImageSlice: 0, borderImageWidth: 0, borderImageOutset: 0, borderImageRepeat: 'stretch', WebkitTapHighlightColor: 'transparent', colorScheme: 'light !important', backgroundColor: '#f8fafc !important', color: '#222 !important' }}>
+      <div style={{
+        minHeight: '100vh',
+        colorScheme: 'light',
+        background: '#f8fafc',
+        color: '#222',
+        width: '100%',
+        boxSizing: 'border-box',
+        fontFamily: 'inherit',
+        position: 'relative',
+        zIndex: 1,
+        MozOsxFontSmoothing: 'auto',
+        WebkitFontSmoothing: 'auto',
+        overscrollBehavior: 'none',
+        pointerEvents: 'auto',
+        border: 'none',
+        outline: 'none',
+        boxShadow: 'none',
+        filter: 'none',
+        transition: 'none',
+        fontWeight: 400,
+        fontSize: '1rem',
+        lineHeight: 1.6,
+        letterSpacing: 0,
+        wordBreak: 'keep-all',
+        backgroundImage: 'none',
+        backgroundClip: 'border-box',
+        backgroundOrigin: 'padding-box',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'scroll',
+        backgroundPosition: '0 0',
+        backgroundSize: 'auto',
+        borderRadius: 0,
+        borderCollapse: 'separate',
+        borderSpacing: 0,
+        textAlign: 'left',
+        direction: 'ltr',
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        msUserSelect: 'text',
+        outlineColor: '#f8fafc',
+        outlineStyle: 'none',
+        outlineWidth: 0,
+        boxShadowColor: 'none',
+        boxShadowBlur: 0,
+        boxShadowSpread: 0,
+        boxShadowInset: 'none',
+        boxShadowOffsetX: 0,
+        boxShadowOffsetY: 0,
+        boxShadowOpacity: 0,
+        WebkitBoxShadow: 'none',
+        MozBoxShadow: 'none',
+        OBoxShadow: 'none',
+        msBoxShadow: 'none',
+        borderColor: '#f8fafc',
+        borderStyle: 'none',
+        borderWidth: 0,
+        borderImage: 'none',
+        borderImageSlice: 0,
+        borderImageWidth: 0,
+        borderImageOutset: 0,
+        borderImageRepeat: 'stretch',
+        WebkitTapHighlightColor: 'transparent'
+      }}>
         <div 
           dangerouslySetInnerHTML={{ __html: contractHtml }}
-          style={{ all: 'initial', padding: '1rem', background: '#f8fafc', color: '#222', fontFamily: 'inherit', fontSize: '1rem', lineHeight: 1.6, boxSizing: 'border-box', colorScheme: 'light', backgroundColor: '#f8fafc !important', color: '#222 !important' }}
+          style={{
+            all: 'initial',
+            padding: '1rem',
+            background: '#f8fafc',
+            color: '#222',
+            fontFamily: 'inherit',
+            fontSize: '1rem',
+            lineHeight: 1.6,
+            boxSizing: 'border-box',
+            colorScheme: 'light'
+          }}
         />
       </div>
       {/* 플로팅 버튼은 React 트리의 최상위에 렌더링 */}
