@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   timeStrToMinutes, 
   calculateInsurance,
@@ -12,11 +12,28 @@ import { calcWorkStats } from './ContractForm';
 
 function ContractPreview() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [contractHtml, setContractHtml] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [form] = useState(null); // setForm 미사용, form만 유지
+  const [form, setForm] = useState(null);
 
-  // generateContractHtml 함수는 useCallback으로 감싸지 않고, 일반 함수 선언(예: function generateContractHtml(form) { ... })만 사용하세요.
+  // formData 쿼리스트링에서 form 데이터 파싱
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const formData = params.get('formData');
+    if (formData) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(formData));
+        setForm(parsed);
+      } catch (e) {
+        setForm(null);
+      }
+    } else {
+      setForm(null);
+    }
+  }, [location.search]);
+
+  // form이 준비되면 generateContractHtml 실행
   const generateContractHtml = useCallback((form) => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 
@@ -69,24 +86,6 @@ function ContractPreview() {
     const baseSalaryForInsurance = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + allowances) : totalCalculatedSalary;
     const insurance = calculateInsurance(baseSalaryForInsurance);
     
-    // 수습기간 임금 계산 (시급제: 소정근로시간만 감액)
-    let probationSalary = 0;
-    if (form.salaryType === 'hourly' && form.probationPeriod) {
-      const discountRate = Number(form.probationDiscount) / 100;
-      const probationStandardSalary = hourlyWage * standardMonthlyHours * (1 - discountRate);
-      probationSalary = probationStandardSalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
-    } else if (form.salaryType === 'monthly' && form.probationPeriod) {
-      const baseSalaryForProbation = Number(form.monthlySalary);
-      // const monthlyWorkHours = workStats3.totalMonth / 60;
-      const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, standardMonthlyHours);
-      const workStats = calcWorkStats(form);
-      const weeklyWorkHours = workStats.totalWeek / 60;
-      const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
-      probationSalary = probationBaseSalary + calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours) + allowances;
-    } else {
-      probationSalary = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + weeklyHolidayPay + allowances) : totalCalculatedSalary;
-    }
-    
     // 월급제: 기본급은 입력된 월급만, 시급제: 소정근로시간 × 시급
     const baseSalary = form.salaryType === 'monthly' 
       ? (form.monthlySalary ? `${Number(form.monthlySalary).toLocaleString()}원` : '[0,000,000]원')
@@ -103,6 +102,25 @@ function ContractPreview() {
       weeklyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
     } else if (form.salaryType === 'hourly' && hourlyWage > 0) {
       weeklyHolidayPay = monthlyHolidayPay;
+    }
+    
+    // 수습기간 임금 계산 (시급제: 소정근로시간만 감액)
+    let probationSalary = 0;
+    if (form.salaryType === 'hourly' && form.probationPeriod) {
+      const discountRate = Number(form.probationDiscount) / 100;
+      const probationStandardSalary = hourlyWage * standardMonthlyHours * (1 - discountRate);
+      probationSalary = probationStandardSalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
+    } else if (form.salaryType === 'monthly' && form.probationPeriod) {
+      const baseSalaryForProbation = Number(form.monthlySalary);
+      // const monthlyWorkHours = workStats3.totalMonth / 60;
+      const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, standardMonthlyHours);
+      const workStats = calcWorkStats(form);
+      const weeklyWorkHours = workStats.totalWeek / 60;
+      const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
+      // 네, 이 줄은 월급제 수습기간 임금 계산에 필요하므로 삭제하면 안 됩니다.
+      probationSalary = probationBaseSalary + calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours) + allowances;
+    } else {
+      probationSalary = form.salaryType === 'monthly' ? (Number(form.monthlySalary) + weeklyHolidayPay + allowances) : totalCalculatedSalary;
     }
     
     // 총 월 임금 계산 (기본급 + 주휴수당 + 제수당)
@@ -883,7 +901,13 @@ function ContractPreview() {
 
     setContractHtml(htmlContent);
     setIsLoading(false);
-  }, []); // 의존성 배열에 form 추가
+  }, []); // 의존성 배열에 form 추가 필요 없음 (아래에서 직접 호출)
+
+  useEffect(() => {
+    if (form) {
+      generateContractHtml(form);
+    }
+  }, [form, generateContractHtml]);
 
   const handlePrint = () => {
     window.print();
@@ -934,7 +958,7 @@ function ContractPreview() {
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📄</div>
           <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#374151' }}>
-            근로계약서 생성 중...
+            {form === null ? '근로계약서 데이터를 불러올 수 없습니다.' : '근로계약서 생성 중...'}
           </div>
         </div>
       </div>

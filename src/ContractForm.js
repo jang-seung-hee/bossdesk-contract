@@ -356,24 +356,10 @@ function ContractForm() {
   // 각 단계별 입력 폼
   const renderStep = () => {
     // 시급제 계산을 위한 변수들 (renderStep 함수 시작 부분에서 정의)
-    const workStats3 = calcWorkStats(form);
-    const hourlyWage = Number(form.hourlyWage) || 0;
+    // const workStats3 = calcWorkStats(form); // 미사용 변수 삭제
+    // const hourlyWage = Number(form.hourlyWage) || 0; // 미사용 변수 삭제
         
-    // 시급제 계산
 
-    // 월 총 근로시간(분) 계산: 공통 함수(calcWorkStats)에서 가져옴
-    let monthlyWorkMinutes = 0;
-    
-    if (form.salaryType === 'hourly' && hourlyWage > 0) {
-      monthlyWorkMinutes = workStats3.totalMonth;
-    }
-    
-    // 수습기간 임금 계산 (모든 단계에서 사용 가능하도록)
-    // 기본급만 감액 적용, 제수당은 그대로 지급
-    // const baseSalaryForProbation = ... // 사용하지 않으므로 주석 처리 또는 삭제
-    
-
-       
     switch (step) {
       case 0: // 사업장 정보
         return (
@@ -1646,18 +1632,12 @@ function MonthlyWageLegalGuide({ form }) {
   }
   const allowances = Number(form.allowances) || 0;
   
-  // 네, 모두 사용되고 있습니다.
-  // minimumWage: 최저임금 계산 결과 (calculateMinimumMonthlyWage는 공통 함수)
-  // inputWage: 입력된 월급
-  // totalInputWage: 입력 월급 + 제수당 (실제 지급 총액)
-  // isCompliant: 최저임금 준수 여부
-  // workStats, monthlyWorkHours: 근무 통계 및 월 근로시간(시급 환산 등에서 사용)
+  // minimumWage, inputWage, totalInputWage, isCompliant, workStats 모두 아래에서 사용되므로 남겨둡니다.
   const minimumWage = calculateMinimumMonthlyWage(form);
   const inputWage = Number(form.monthlySalary) || 0;
   const totalInputWage = inputWage + allowances;
   const isCompliant = totalInputWage >= minimumWage.totalMinimumWage;
-  const workStats = calcWorkStats(form);
-  const monthlyWorkHours = workStats.totalMonth / 60;
+  // const workStats = calcWorkStats(form); // 미사용 변수 삭제
 
   // [1] 월 총 임금(예상) 계산: 입력 월급(주휴수당 포함) + 제수당만 합산 (주휴수당 중복 X)
   const totalMonthlyWage = inputWage + allowances;
