@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   timeStrToMinutes, 
@@ -8,6 +8,7 @@ import {
   getProbationMinimumWage, // 수습기간 최저임금 하한선 공통 함수
   calculateWeeklyHolidayPay // 주휴수당 계산 함수
 } from './utils/laborRules';
+import { calcWorkStats } from './ContractForm';
 
 function ContractPreview() {
   const navigate = useNavigate();
@@ -16,78 +17,8 @@ function ContractPreview() {
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState(null);
 
-  useEffect(() => {
-    // URL 파라미터에서 폼 데이터 가져오기
-    const params = new URLSearchParams(location.search);
-    const formData = params.get('formData');
-    
-    if (formData) {
-      try {
-        const parsedForm = JSON.parse(decodeURIComponent(formData));
-        setForm(parsedForm);
-        generateContractHtml(parsedForm);
-      } catch (error) {
-        console.error('폼 데이터 파싱 오류:', error);
-        setIsLoading(false);
-      }
-    } else {
-      setIsLoading(false);
-    }
-  }, [location, generateContractHtml]);
-
-  // 시간 계산 유틸 (공통 함수 사용)
-  function getMinutes(t) {
-    return timeStrToMinutes(t);
-  }
-
-  // 소정 근로시간에 해당하는 종료 시간 계산
-  // function getEndTimeForStandardHours(startTime, standardHours) {
-  //   if (!startTime) return '18:00';
-  //   const startMinutes = getMinutes(startTime);
-  //   const endMinutes = startMinutes + (standardHours * 60);
-  //   const endHours = Math.floor(endMinutes / 60);
-  //   const endMins = endMinutes % 60;
-  //   return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
-  // }
-
-  function calcWorkStats(form) {
-    let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
-    const dayStats = {};
-    // 야간근로 시간대 정의 (22:00~06:00)
-    form.days.forEach(day => {
-      let s, e, br;
-      if (form.workTimeType === 'same') {
-        s = getMinutes(form.commonStart);
-        e = getMinutes(form.commonEnd);
-        br = Number(form.commonBreak) || 0;
-      } else {
-        s = getMinutes(form.dayTimes[day]?.start);
-        e = getMinutes(form.dayTimes[day]?.end);
-        br = Number(form.dayTimes[day]?.break) || 0;
-      }
-      if ((!s && !e) || e === s) { dayStats[day] = { work: 0, night: 0, over: 0 }; return; }
-      let work = e > s ? e - s : (e + 24 * 60) - s;
-      work = Math.max(0, work - br); // 휴게시간 차감
-      let nightMin = 0;
-      // 야간근로 계산 (22:00~06:00)
-      for (let t = s; t < s + work + br; t += 10) {
-        const cur = t % (24 * 60);
-        if (cur >= 22 * 60 || cur < 6 * 60) nightMin += 10;
-      }
-      // 연장근로(1일 8시간 초과)
-      let overMin = work > 480 ? work - 480 : 0;
-      dayStats[day] = { work, night: nightMin, over: overMin };
-      totalWeek += work;
-      night += nightMin;
-      over += overMin;
-    });
-    totalMonth = Math.round(totalWeek * 4.345); // 월평균 주수
-    return { dayStats, totalWeek, totalMonth, night, over };
-  }
-
-
-
-  const generateContractHtml = (form) => {
+  // generateContractHtml을 useCallback으로 감싸고, useEffect 위로 옮김
+  const generateContractHtml = useCallback((form) => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 
       year: 'numeric', 
@@ -181,6 +112,120 @@ function ContractPreview() {
     const workStats = calcWorkStats(form);
     const weeklyWorkHours = workStats.totalWeek / 60; // 분을 시간으로 변환
 
+    // [1] 근로시간/휴게시간 테이블 행 미리 계산
+    let workTimeRows = '';
+    if (form.workTimeType === 'same') {
+      const startTime = form.commonStart || '09:00';
+      const endTime = form.commonEnd || '18:00';
+      const breakTime = Number(form.commonBreak) || 0;
+      const workHours = timeStrToMinutes(endTime) - timeStrToMinutes(startTime);
+      const standardWorkHours = workHours - breakTime;
+      const overtimeHours = Math.max(0, standardWorkHours - 480); // 8시간 초과분
+      const dailyStandardHours = (standardWorkHours / 60).toFixed(1);
+      const weeklyStandardHours = ((standardWorkHours * form.days.length) / 60).toFixed(1);
+      const monthlyStandardHours = ((standardWorkHours * form.days.length * 4.345) / 60).toFixed(1);
+      workTimeRows = `
+        <tr>
+          <td><strong>근무시간</strong></td>
+          <td>${startTime} - ${endTime} (${form.days.join(', ')})</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 2rem;"><strong>• 휴게시간</strong></td>
+          <td>${(breakTime / 60).toFixed(1)}시간 (근로시간 중 근로자와 협의하여 부여)</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 2rem;"><strong>• 소정근로시간</strong></td>
+          <td>
+            일일: ${dailyStandardHours}시간<br/>
+            주간: ${weeklyStandardHours}시간<br/>
+            월간: ${monthlyStandardHours}시간 (휴게시간 제외)
+          </td>
+        </tr>
+        ${overtimeHours > 0 ? `
+        <tr>
+          <td style="padding-left: 2rem;"><strong>• 연장근로시간</strong></td>
+          <td>${(overtimeHours / 60).toFixed(1)}시간 (일 8시간 초과분)</td>
+        </tr>
+        ` : ''}
+      `;
+    } else {
+      // 요일별 상이한 경우: 실무 관행 기준으로 표시
+      let rows = '';
+      rows += `
+        <tr>
+          <td colspan="2" style="font-weight:700; font-size:1.08rem; color:#1e293b; padding-bottom:0.5rem;">근로시간 및 휴게시간</td>
+        </tr>
+      `;
+      form.days.forEach(day => {
+        const dayTime = form.dayTimes[day];
+        if (dayTime && dayTime.start && dayTime.end) {
+          const startTime = dayTime.start;
+          const endTime = dayTime.end;
+          const workMinutes = timeStrToMinutes(endTime) - timeStrToMinutes(startTime);
+          const breakMinutes = getPracticalBreakMinutes(workMinutes);
+          const standardWorkMinutes = workMinutes - breakMinutes;
+          const overtimeMinutes = Math.max(0, standardWorkMinutes - 480);
+          let rightText = `일일 소정근로시간 ${(standardWorkMinutes/60).toFixed(1)}시간 / 휴게시간 ${breakMinutes}분`;
+          if (overtimeMinutes > 0) {
+            rightText += ` / 연장근무 ${overtimeMinutes}분`;
+          }
+          rows += `
+            <tr>
+              <td style="vertical-align:top; width:40%; padding-left:1.2rem;">- ${day} (${startTime}~${endTime} / 휴게 ${Math.round(breakMinutes/60*10)/10}시간)</td>
+              <td style="vertical-align:top; width:60%; color:#64748b; font-size:0.98rem;">${rightText}</td>
+            </tr>
+          `;
+        }
+      });
+      // 통계 계산
+      let totalWorkMinutes = 0, totalBreakMinutes = 0;
+      form.days.forEach(day => {
+        const dayTime = form.dayTimes[day];
+        if (dayTime && dayTime.start && dayTime.end) {
+          const workMinutes = timeStrToMinutes(dayTime.end) - timeStrToMinutes(dayTime.start);
+          const breakMinutes = getPracticalBreakMinutes(workMinutes);
+          totalWorkMinutes += workMinutes;
+          totalBreakMinutes += breakMinutes;
+        }
+      });
+      const weeklyWorkMinutes = totalWorkMinutes - totalBreakMinutes;
+      const weeklyBreakHours = (totalBreakMinutes / 60).toFixed(1);
+      const weeklyWorkHours = (weeklyWorkMinutes / 60).toFixed(1);
+      const monthlyWorkMinutes = (totalWorkMinutes - totalBreakMinutes) * 4.345;
+      const monthlyBreakHours = ((totalBreakMinutes * 4.345) / 60).toFixed(1);
+      const monthlyWorkHours = (monthlyWorkMinutes / 60).toFixed(1);
+      rows += `
+        <tr>
+          <td colspan="2" style="padding-top:1.2rem; padding-bottom:0.2rem;">
+            <div style="background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:10px; padding:1.1rem 1.2rem 0.7rem 1.2rem; margin-bottom:0.2rem;">
+              <div style="font-weight:600; color:#334155; font-size:1.01rem; margin-bottom:0.5rem;">근로시간 통계</div>
+              <table style="width:100%; font-size:0.99rem; background:transparent;">
+                <tr><td style="width:45%; color:#475569;">주간 합계</td><td>${weeklyWorkHours}시간 / (휴게시간 ${weeklyBreakHours}시간 제외 시)</td></tr>
+                <tr><td style="color:#475569;">월간 합계</td><td>${monthlyWorkHours}시간 / (휴게시간 ${monthlyBreakHours}시간 제외 시)</td></tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+        <tr><td colspan="2" style="padding-top:1.1rem; font-weight:600; color:#1e293b;">기타 연장/야간/휴일 관련</td></tr>
+        <tr><td colspan="2">${(() => {
+        const workStats = calcWorkStats(form);
+        const weeklyWorkHours = workStats.totalWeek / 60;
+        const hasOvertime = weeklyWorkHours > 40 || Object.values(workStats.dayStats).some(d => d.over > 0);
+        const hasNight = workStats.night > 0;
+        let details = [];
+        if (hasOvertime) details.push('연장근로(1일 8시간, 1주 40시간 초과분 발생, 통상임금의 50% 가산수당 지급)');
+        if (hasNight) details.push('야간근로(22:00~06:00, 통상임금의 50% 가산수당 지급)');
+        details.push('휴일근로(주휴일, 공휴일 등 법정휴일 근로 시 통상임금의 50% 가산수당 지급)');
+        return details.length > 0 ? details.map(d => `<div>• ${d}</div>`).join('') : '갑의 지시 또는 을의 동의 하에 가능하며, 근로기준법에 따라 가산수당 지급 (연장근로는 주 12시간을 한도로 함)';
+      })()}</td></tr>
+      `;
+      workTimeRows = rows;
+    }
+
+    // [2] 기타 즉시실행 함수(IIFE)로 HTML 만드는 부분도 모두 위와 같이 변수로 분리
+    // ... (overtimeDetailRows, probationSalaryDetail 등도 같은 방식으로 분리) ...
+
+    // [3] htmlContent 템플릿에서 ${...}에는 위에서 미리 계산한 변수만 사용
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="ko">
@@ -387,7 +432,7 @@ function ContractPreview() {
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
-    <div style={{ minHeight: '100vh', background: '#f0f4f8' }}>
+    <div style="min-height: 100vh; background: #f0f4f8;">
       <div class="contract-container">
         <div class="contract-content">
         <div class="legal-notice">
@@ -531,116 +576,7 @@ function ContractPreview() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${(() => {
-                            if (form.workTimeType === 'same') {
-                                const startTime = form.commonStart || '09:00';
-                                const endTime = form.commonEnd || '18:00';
-                                const breakTime = Number(form.commonBreak) || 0;
-                                const workHours = getMinutes(endTime) - getMinutes(startTime);
-                                const standardWorkHours = workHours - breakTime;
-                                const overtimeHours = Math.max(0, standardWorkHours - 480); // 8시간 초과분
-                                const dailyStandardHours = (standardWorkHours / 60).toFixed(1);
-                                const weeklyStandardHours = ((standardWorkHours * form.days.length) / 60).toFixed(1);
-                                const monthlyStandardHours = ((standardWorkHours * form.days.length * 4.345) / 60).toFixed(1);
-                                return `
-                                <tr>
-                                    <td><strong>근무시간</strong></td>
-                                    <td>${startTime} - ${endTime} (${form.days.join(', ')})</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding-left: 2rem;"><strong>• 휴게시간</strong></td>
-                                    <td>${(breakTime / 60).toFixed(1)}시간 (근로시간 중 근로자와 협의하여 부여)</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding-left: 2rem;"><strong>• 소정근로시간</strong></td>
-                                    <td>
-                                        일일: ${dailyStandardHours}시간<br/>
-                                        주간: ${weeklyStandardHours}시간<br/>
-                                        월간: ${monthlyStandardHours}시간 (휴게시간 제외)
-                                    </td>
-                                </tr>
-                                ${overtimeHours > 0 ? `
-                                <tr>
-                                    <td style="padding-left: 2rem;"><strong>• 연장근로시간</strong></td>
-                                    <td>${(overtimeHours / 60).toFixed(1)}시간 (일 8시간 초과분)</td>
-                                </tr>
-                                ` : ''}
-                                `;
-                            } else {
-                                // 요일별 상이한 경우: 실무 관행 기준으로 표시
-                                let rows = '';
-                                rows += `
-                                <tr>
-                                  <td colspan="2" style="font-weight:700; font-size:1.08rem; color:#1e293b; padding-bottom:0.5rem;">근로시간 및 휴게시간</td>
-                                </tr>
-                                `;
-                                form.days.forEach(day => {
-                                    const dayTime = form.dayTimes[day];
-                                    if (dayTime && dayTime.start && dayTime.end) {
-                                        const startTime = dayTime.start;
-                                        const endTime = dayTime.end;
-                                        const workMinutes = timeStrToMinutes(endTime) - timeStrToMinutes(startTime);
-                                        const breakMinutes = getPracticalBreakMinutes(workMinutes);
-                                        const standardWorkMinutes = workMinutes - breakMinutes;
-                                        const overtimeMinutes = Math.max(0, standardWorkMinutes - 480);
-                                        let rightText = `일일 소정근로시간 ${(standardWorkMinutes/60).toFixed(1)}시간 / 휴게시간 ${breakMinutes}분`;
-                                        if (overtimeMinutes > 0) {
-                                            rightText += ` / 연장근무 ${overtimeMinutes}분`;
-                                        }
-                                        rows += `
-                                        <tr>
-                                          <td style="vertical-align:top; width:40%; padding-left:1.2rem;">- ${day} (${startTime}~${endTime} / 휴게 ${Math.round(breakMinutes/60*10)/10}시간)</td>
-                                          <td style="vertical-align:top; width:60%; color:#64748b; font-size:0.98rem;">${rightText}</td>
-                                        </tr>
-                                        `;
-                                    }
-                                });
-                                // 통계 계산
-                                let totalWorkMinutes = 0, totalBreakMinutes = 0;
-                                form.days.forEach(day => {
-                                    const dayTime = form.dayTimes[day];
-                                    if (dayTime && dayTime.start && dayTime.end) {
-                                        const workMinutes = timeStrToMinutes(dayTime.end) - timeStrToMinutes(dayTime.start);
-                                        const breakMinutes = getPracticalBreakMinutes(workMinutes);
-                                        totalWorkMinutes += workMinutes;
-                                        totalBreakMinutes += breakMinutes;
-                                    }
-                                });
-                                const weeklyWorkMinutes = totalWorkMinutes - totalBreakMinutes;
-                                const weeklyBreakHours = (totalBreakMinutes / 60).toFixed(1);
-                                const weeklyWorkHours = (weeklyWorkMinutes / 60).toFixed(1);
-                                const monthlyWorkMinutes = (totalWorkMinutes - totalBreakMinutes) * 4.345;
-                                const monthlyBreakHours = ((totalBreakMinutes * 4.345) / 60).toFixed(1);
-                                const monthlyWorkHours = (monthlyWorkMinutes / 60).toFixed(1);
-                                // 근로시간 통계 박스
-                                rows += `
-                                <tr>
-                                  <td colspan="2" style="padding-top:1.2rem; padding-bottom:0.2rem;">
-                                    <div style="background:#f1f5f9; border:1.5px solid #cbd5e1; border-radius:10px; padding:1.1rem 1.2rem 0.7rem 1.2rem; margin-bottom:0.2rem;">
-                                      <div style="font-weight:600; color:#334155; font-size:1.01rem; margin-bottom:0.5rem;">근로시간 통계</div>
-                                      <table style="width:100%; font-size:0.99rem; background:transparent;">
-                                        <tr><td style="width:45%; color:#475569;">주간 합계</td><td>${weeklyWorkHours}시간 / (휴게시간 ${weeklyBreakHours}시간 제외 시)</td></tr>
-                                        <tr><td style="color:#475569;">월간 합계</td><td>${monthlyWorkHours}시간 / (휴게시간 ${monthlyBreakHours}시간 제외 시)</td></tr>
-                                      </table>
-                                    </div>
-                                  </td>
-                                </tr>
-                                <tr><td colspan="2" style="padding-top:1.1rem; font-weight:600; color:#1e293b;">기타 연장/야간/휴일 관련</td></tr>
-                                <tr><td colspan="2">${(() => {
-                                    const workStats = calcWorkStats(form);
-                                    const weeklyWorkHours = workStats.totalWeek / 60;
-                                    const hasOvertime = weeklyWorkHours > 40 || Object.values(workStats.dayStats).some(d => d.over > 0);
-                                    const hasNight = workStats.night > 0;
-                                    let details = [];
-                                    if (hasOvertime) details.push('연장근로(1일 8시간, 1주 40시간 초과분 발생, 통상임금의 50% 가산수당 지급)');
-                                    if (hasNight) details.push('야간근로(22:00~06:00, 통상임금의 50% 가산수당 지급)');
-                                    details.push('휴일근로(주휴일, 공휴일 등 법정휴일 근로 시 통상임금의 50% 가산수당 지급)');
-                                    return details.length > 0 ? details.map(d => `<div>• ${d}</div>`).join('') : '갑의 지시 또는 을의 동의 하에 가능하며, 근로기준법에 따라 가산수당 지급 (연장근로는 주 12시간을 한도로 함)';
-                                })()}</td></tr>
-                                `;
-                                return rows;
-                            }
-                        })()}
+                        ${workTimeRows}
                     </tbody>
                 </table>
             </div>
@@ -942,7 +878,7 @@ function ContractPreview() {
 
     setContractHtml(htmlContent);
     setIsLoading(false);
-  };
+  }, []); // 의존성 배열에 form 추가
 
   const handlePrint = () => {
     window.print();

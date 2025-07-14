@@ -40,7 +40,7 @@ function getHourStr(mins) {
   return minutesToTimeStr(mins);
 }
 
-function calcWorkStats(form) {
+export function calcWorkStats(form) {
   let totalWeek = 0, totalMonth = 0, night = 0, over = 0;
   const dayStats = {};
   const NIGHT_START = 22 * 60, NIGHT_END = 6 * 60; // 22:00~06:00
@@ -361,15 +361,10 @@ function ContractForm() {
         
     // 시급제 계산
 
-    let monthlyWorkMinutes = 0, monthlyWorkHours = 0, overtimeHours = 0, nightHours = 0;
+    let monthlyWorkMinutes = 0; // overtimeHours, nightHours, monthlyWorkHours 등 사용하지 않는 변수 제거
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
-      monthlyWorkHours = monthlyWorkMinutes / 60;
-
-      
-      // 주휴수당 계산 (통일된 규칙)
-
     }
     
     // 수습기간 임금 계산 (모든 단계에서 사용 가능하도록)
