@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   timeStrToMinutes, 
   calculateInsurance,
@@ -16,7 +16,7 @@ function ContractPreview() {
   const [isLoading, setIsLoading] = useState(true);
   const [form] = useState(null); // setForm 미사용, form만 유지
 
-  // generateContractHtml 함수는 useCallback으로 감싸지 않고, 함수 선언만 남김(필요시)
+  // generateContractHtml 함수는 useCallback으로 감싸지 않고, 일반 함수 선언(예: function generateContractHtml(form) { ... })만 사용하세요.
   const generateContractHtml = useCallback((form) => {
     // 표준근로계약서 HTML 생성
     const contractDate = new Date().toLocaleDateString('ko-KR', { 
@@ -53,7 +53,14 @@ function ContractPreview() {
       nightHours = workStats3.night / 60;
       nightPay = hourlyWage * 0.5 * nightHours;
       // 주휴수당 (통일된 규칙)
-      monthlyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours);
+      // 주휴수당 계산 시 반드시 실무 관행 휴게시간(getPracticalBreakMinutes) 적용
+      {
+        // 실무 관행에 따라 실제 근로시간에서 휴게시간을 차감하여 주휴수당 산정
+        const practicalBreak = getPracticalBreakMinutes(form);
+        const practicalWeeklyWorkMinutes = workStats3.totalWeek - practicalBreak;
+        const practicalWeeklyWorkHours = practicalWeeklyWorkMinutes / 60;
+        monthlyHolidayPay = calculateWeeklyHolidayPay(hourlyWage, practicalWeeklyWorkHours);
+      }
       // 시급제 총 임금 계산
       totalCalculatedSalary = calculatedMonthlySalary + overtimePay + nightPay + monthlyHolidayPay + allowances;
     }
@@ -725,7 +732,6 @@ function ContractPreview() {
                                                 const probationBaseSalary = calculateProbationSalary(baseSalaryForProbation, form.probationDiscount, monthlyWorkHours);
                                                 const weeklyWorkHours = workStats.totalWeek / 60;
                                                 const hourlyWage = Number(form.monthlySalary) / (workStats.totalMonth / 60);
-                                                const discountedSalary = probationBaseSalary;
                                                 return `
                                                 <p>• 수습기간 기본급: ${probationBaseSalary.toLocaleString()}원 (정상 기본급 ${baseSalaryForProbation.toLocaleString()}원의 ${100 - Number(form.probationDiscount)}%)</p>
                                                 ${weeklyWorkHours >= 15 ? `<p>• 주휴수당: ${calculateWeeklyHolidayPay(hourlyWage, weeklyWorkHours).toLocaleString()}원 (수습기간에도 동일하게 지급)</p>` : ''}

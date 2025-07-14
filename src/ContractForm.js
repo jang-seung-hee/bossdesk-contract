@@ -6,7 +6,7 @@ import {
   formatNumberWithCommas,
   parseNumberFromCommas,
   LEGAL_INFO,
-  calculateProbationSalary,
+  // 삭제: calculateProbationSalary는 더 이상 개별적으로 import하지 않습니다.
   checkInsuranceEligibility,
   checkWeeklyHolidayEligibility,
   getPracticalBreakMinutes,
@@ -361,7 +361,8 @@ function ContractForm() {
         
     // 시급제 계산
 
-    let monthlyWorkMinutes = 0; // overtimeHours, nightHours, monthlyWorkHours 등 사용하지 않는 변수 제거
+    // 월 총 근로시간(분) 계산: 공통 함수(calcWorkStats)에서 가져옴
+    let monthlyWorkMinutes = 0;
     
     if (form.salaryType === 'hourly' && hourlyWage > 0) {
       monthlyWorkMinutes = workStats3.totalMonth;
@@ -1645,11 +1646,16 @@ function MonthlyWageLegalGuide({ form }) {
   }
   const allowances = Number(form.allowances) || 0;
   
+  // 네, 모두 사용되고 있습니다.
+  // minimumWage: 최저임금 계산 결과 (calculateMinimumMonthlyWage는 공통 함수)
+  // inputWage: 입력된 월급
+  // totalInputWage: 입력 월급 + 제수당 (실제 지급 총액)
+  // isCompliant: 최저임금 준수 여부
+  // workStats, monthlyWorkHours: 근무 통계 및 월 근로시간(시급 환산 등에서 사용)
   const minimumWage = calculateMinimumMonthlyWage(form);
   const inputWage = Number(form.monthlySalary) || 0;
-    const totalInputWage = inputWage + allowances;
+  const totalInputWage = inputWage + allowances;
   const isCompliant = totalInputWage >= minimumWage.totalMinimumWage;
-  // 추가: 월급제 기준 근무 통계 및 시급 계산
   const workStats = calcWorkStats(form);
   const monthlyWorkHours = workStats.totalMonth / 60;
 
