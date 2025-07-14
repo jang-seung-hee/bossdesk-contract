@@ -379,6 +379,9 @@ function ContractPreview() {
             max-width: 600px;
             margin: 0 auto;
         }
+        @media (max-width: 800px) {
+            .signature-boxes { flex-direction: row; flex-wrap: nowrap; gap: 1.5rem; }
+        }
         .sig-box {
             min-width: 210px;
             max-width: 260px;
@@ -395,9 +398,6 @@ function ContractPreview() {
         .sig-seal { border-top: 2px dashed #cbd5e1; margin-top: 1.5rem; padding-top: 1rem; color: #6b7280; font-size: 0.95rem; }
         .signature-footer { color: #6b7280; font-size: 0.98rem; margin-top: 1.5rem; }
         .signature-date { color: #374151; font-size: 1.05rem; margin-top: 0.5rem; }
-        @media (max-width: 800px) {
-            .signature-boxes { flex-direction: column; gap: 1.5rem; }
-        }
         @media print {
             body, .contract-container, .contract-container::before {
                 background: white !important;
@@ -464,15 +464,15 @@ function ContractPreview() {
         </div>
         
         <header class="text-center mb-10">
-            <h1 class="text-6xl font-black" style="color:#1e293b; color:#1e3a8a; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">${form.storeName || '[회사명]'} 근로계약서</h1>
+            <h1 class="text-4xl font-bold" style="font-size:2.5rem; color:#1e293b; color:#1e3a8a; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">${form.storeName || '[회사명]'} 근로계약서</h1>
             <p class="text-lg text-gray-700" style="font-size: 1.25rem; color: #22223b; font-weight: 500; margin-top:0.5rem;">같이 일하게 되어 기대가 됩니다. 함께 성장하는 동반자가 되겠습니다.</p>
         </header>
 
-        <div class="info-box">
-            <span style="font-weight:700;">■ 2025년 최신 법적 정보</span><br>
-            <span>• 최저시급: 10,030원/시간</span><br>
-            <span>• 최저월급: 2,096,270원 (209시간 기준)</span><br>
-            <span>• 4대보험료: 국민연금 4.5%, 건강보험 3.5%, 장기요양보험 0.46%, 고용보험 0.9%, 산재보험</span>
+        <div class="info-box" style="font-size:0.85rem; margin-bottom:calc(1.5rem + 10px);">
+            <span style="font-weight:700; font-size:0.85rem;">■ 2025년 최신 법적 정보</span><br>
+            <span style="font-size:0.85rem;">• 최저시급: 10,030원/시간</span><br>
+            <span style="font-size:0.85rem;">• 최저월급: 2,096,270원 (209시간 기준)</span><br>
+            <span style="font-size:0.85rem;">• 4대보험료: 국민연금 4.5%, 건강보험 3.5%, 장기요양보험 0.46%, 고용보험 0.9%, 산재보험</span>
         </div>
 
         <section class="mb-8">

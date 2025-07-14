@@ -1199,90 +1199,85 @@ function ContractForm() {
             </div>
             
             {/* 입력값 요약 표 */}
-            <div className="summary-table-container" style={{marginBottom: 24}}>
-              <h3 style={{fontSize: '18px', fontWeight: 'bold', marginBottom: 16, color: '#1f2937'}}>📋 입력값 요약</h3>
+            <div className="summary-table-container" style={{marginBottom: 24, fontSize: '0.85rem'}}>
+              <h3 style={{fontSize: '16px', fontWeight: 'bold', marginBottom: 16, color: '#1f2937'}}>📋 입력값 요약</h3>
               <div style={{
                 border: '1px solid #e5e7eb',
                 borderRadius: 8,
                 overflow: 'hidden',
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                fontSize: '0.85rem'
               }}>
-                <table style={{width: '100%', borderCollapse: 'collapse'}}>
+                <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem'}}>
                   <tbody>
                     {/* 사업장 정보 */}
-                    <tr style={{backgroundColor: '#f9fafb'}}>
-                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', width: '30%'}}>사업장 정보</td>
-                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                        <div><strong>사업장명:</strong> {form.storeName || '-'}</div>
-                        <div><strong>대표자:</strong> {form.owner || '-'}</div>
-                        <div><strong>주소:</strong> {form.address} {form.addressDetail}</div>
-                        <div><strong>연락처:</strong> {form.storeContact || '-'}</div>
+                    <tr style={{backgroundColor: '#f9fafb', fontSize: '0.85rem'}}>
+                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', width: '30%', fontSize: '0.85rem'}}>사업장 정보</td>
+                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>사업장명:</strong> {form.storeName || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>대표자:</strong> {form.owner || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>주소:</strong> {form.address} {form.addressDetail}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>연락처:</strong> {form.storeContact || '-'}</div>
                       </td>
                     </tr>
-                    
                     {/* 근로자 정보 */}
-                    <tr>
-                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>근로자 정보</td>
-                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                        <div><strong>성명:</strong> {form.name || '-'}</div>
-                        <div><strong>생년월일:</strong> {form.birth || '-'}</div>
-                        <div><strong>주소:</strong> {form.workerAddress} {form.workerAddressDetail}</div>
-                        <div><strong>연락처:</strong> {form.contact || '-'}</div>
+                    <tr style={{fontSize: '0.85rem'}}>
+                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>근로자 정보</td>
+                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>성명:</strong> {form.name || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>생년월일:</strong> {form.birth || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>주소:</strong> {form.workerAddress} {form.workerAddressDetail}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>연락처:</strong> {form.contact || '-'}</div>
                       </td>
                     </tr>
-                    
                     {/* 계약 기간 */}
-                    <tr style={{backgroundColor: '#f9fafb'}}>
-                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>계약 기간</td>
-                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                        <div><strong>시작일:</strong> {form.periodStart || '-'}</div>
-                        <div><strong>종료일:</strong> {form.periodEnd || '무기한'}</div>
-                        <div><strong>수습기간:</strong> {form.probationPeriod || '-'}</div>
+                    <tr style={{backgroundColor: '#f9fafb', fontSize: '0.85rem'}}>
+                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>계약 기간</td>
+                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>시작일:</strong> {form.periodStart || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>종료일:</strong> {form.periodEnd || '무기한'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>수습기간:</strong> {form.probationPeriod || '-'}</div>
                       </td>
                     </tr>
-                    
                     {/* 근무 조건 */}
-                    <tr>
-                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>근무 조건</td>
-                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                        <div><strong>근무장소:</strong> {form.workLocation || '-'}</div>
-                        <div><strong>업무내용:</strong> {form.jobDesc || '-'}</div>
-                        <div><strong>직책:</strong> {form.position || '-'}</div>
+                    <tr style={{fontSize: '0.85rem'}}>
+                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>근무 조건</td>
+                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>근무장소:</strong> {form.workLocation || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>업무내용:</strong> {form.jobDesc || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>직책:</strong> {form.position || '-'}</div>
                       </td>
                     </tr>
-                    
                     {/* 근로시간 */}
-                    <tr style={{backgroundColor: '#f9fafb'}}>
-                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>근로시간</td>
-                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                        <div><strong>근무일:</strong> {form.days.join(', ')}</div>
+                    <tr style={{backgroundColor: '#f9fafb', fontSize: '0.85rem'}}>
+                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>근로시간</td>
+                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>근무일:</strong> {form.days.join(', ')}</div>
                         {form.workTimeType === 'same' ? (
                           <>
-                            <div><strong>근무시간:</strong> {form.commonStart} ~ {form.commonEnd}</div>
-                            <div><strong>휴게시간:</strong> {form.commonBreak}분</div>
+                            <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>근무시간:</strong> {form.commonStart} ~ {form.commonEnd}</div>
+                            <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>휴게시간:</strong> {form.commonBreak}분</div>
                     </>
                   ) : (
-                          <div><strong>근무시간:</strong> 요일별 상이</div>
+                          <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>근무시간:</strong> 요일별 상이</div>
                         )}
                       </td>
                     </tr>
-                    
                     {/* 임금 조건 */}
-                    <tr>
-                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>임금 조건</td>
-                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                        <div><strong>임금 형태:</strong> {form.salaryType === 'monthly' ? '월급제' : '시급제'}</div>
+                    <tr style={{fontSize: '0.85rem'}}>
+                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>임금 조건</td>
+                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>임금 형태:</strong> {form.salaryType === 'monthly' ? '월급제' : '시급제'}</div>
                         {form.salaryType === 'monthly' ? (
-                          <div><strong>총 월임금(주휴수당포함):</strong> {Number(form.monthlySalary).toLocaleString()}원</div>
+                          <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>총 월임금(주휴수당포함):</strong> {Number(form.monthlySalary).toLocaleString()}원</div>
                         ) : (
-                          <div><strong>시급:</strong> {Number(form.hourlyWage).toLocaleString()}원</div>
+                          <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>시급:</strong> {Number(form.hourlyWage).toLocaleString()}원</div>
                         )}
-                        <div><strong>제수당:</strong> {Number(form.allowances).toLocaleString()}원</div>
-                        <div><strong>지급일:</strong> {form.payday || '-'}</div>
-                        <div><strong>지급방법:</strong> {form.paymentMethod || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>제수당:</strong> {Number(form.allowances).toLocaleString()}원</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>지급일:</strong> {form.payday || '-'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>지급방법:</strong> {form.paymentMethod || '-'}</div>
                       </td>
                     </tr>
-                    
                     {/* 수습기간 정보 */}
                     {form.probationPeriod && (() => {
                       const workStats = calcWorkStats(form);
@@ -1298,30 +1293,29 @@ function ContractForm() {
                         : LEGAL_INFO.MIN_MONTHLY * 0.9;
 
                       return (
-                        <tr style={{backgroundColor: '#fef3c7'}}>
-                          <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>수습기간</td>
-                          <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                            <div><strong>수습기간:</strong> {form.probationPeriod}</div>
-                            <div><strong>정상 임금:</strong> {(probationBaseSalary + allowances).toLocaleString()}원</div>
-                            <div><strong>수습기간 임금:</strong> {(probationBaseSalary + allowances).toLocaleString()}원</div>
+                        <tr style={{backgroundColor: '#fef3c7', fontSize: '0.85rem'}}>
+                          <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>수습기간</td>
+                          <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                            <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>수습기간:</strong> {form.probationPeriod}</div>
+                            <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>정상 임금:</strong> {(probationBaseSalary + allowances).toLocaleString()}원</div>
+                            <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>수습기간 임금:</strong> {(probationBaseSalary + allowances).toLocaleString()}원</div>
                             {probationBaseSalary === minimumProbationSalary && discountedSalary < minimumProbationSalary ? (
-                              <div style={{color: '#dc2626', fontWeight: 'bold'}}>
+                              <div style={{color: '#dc2626', fontWeight: 'bold', fontSize: '0.85rem'}}>
                                 ⚠️ 감액률({form.probationDiscount}%) 적용 시 최저임금 90%({Math.round(minimumProbationSalary).toLocaleString()}원) 미만이므로, 최저임금 90% 하한선이 적용됩니다.
                               </div>
                             ) : (
-                              <div><strong>감액률:</strong> {form.probationDiscount}%</div>
+                              <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>감액률:</strong> {form.probationDiscount}%</div>
                             )}
                           </td>
                         </tr>
                       );
                     })()}
-                    
                     {/* 기타 사항 */}
-                    <tr style={{backgroundColor: '#f9fafb'}}>
-                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb'}}>기타 사항</td>
-                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb'}}>
-                        <div><strong>4대보험:</strong> {form.socialInsurance ? '가입' : '미가입'}</div>
-                        <div><strong>기타 조건:</strong> {form.otherConditions || '-'}</div>
+                    <tr style={{backgroundColor: '#f9fafb', fontSize: '0.85rem'}}>
+                      <td style={{padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>기타 사항</td>
+                      <td style={{padding: '12px 16px', borderBottom: '1px solid #e5e7eb', fontSize: '0.85rem'}}>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>4대보험:</strong> {form.socialInsurance ? '가입' : '미가입'}</div>
+                        <div style={{fontSize: '0.85rem'}}><strong style={{fontSize: '0.85rem'}}>기타 조건:</strong> {form.otherConditions || '-'}</div>
                       </td>
                     </tr>
                   </tbody>
